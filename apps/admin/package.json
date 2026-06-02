@@ -1,7 +1,7 @@
 {
-  "name": "the-playroom-admin",
+  "name": "admin",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.1",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
