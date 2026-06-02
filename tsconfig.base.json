@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@playroom/ui": ["packages/ui/src"],
+      "@playroom/core": ["packages/core/src"],
+      "@playroom/db": ["packages/db/src"],
+      "@playroom/config": ["packages/config/src"]
+    }
+  },
+  "include": ["packages/**/*", "apps/**/*", "services/**/*"],
+  "exclude": ["node_modules", "**/dist", "**/build"]
+}
