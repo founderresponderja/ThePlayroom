@@ -2,11 +2,13 @@
 import { useEffect, useState } from 'react'
 
 export function AgeGate() {
-  const [verified, setVerified] = useState<boolean | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [verified, setVerified] = useState(true)
 
   useEffect(() => {
-    const saved = localStorage.getItem('age-verified')
-    setVerified(saved === 'true')
+    setMounted(true)
+    const isVerified = localStorage.getItem('age-verified') === 'true'
+    setVerified(isVerified)
   }, [])
 
   const confirm = () => {
@@ -18,9 +20,7 @@ export function AgeGate() {
     window.location.href = 'https://www.google.com'
   }
 
-  if (verified === null || verified) {
-    return null
-  }
+  if (!mounted || verified) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 px-4 py-8 text-white">

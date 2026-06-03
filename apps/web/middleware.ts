@@ -3,7 +3,8 @@ import { clerkMiddleware } from '@clerk/nextjs/server'
 
 const intlMiddleware = createMiddleware({
   locales: ['pt', 'en', 'es'],
-  defaultLocale: 'pt'
+  defaultLocale: 'pt',
+  localePrefix: 'always',
 })
 
 export default clerkMiddleware((auth, req) => {
