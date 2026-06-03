@@ -1,16 +1,12 @@
-const nextConfig = {
-  reactStrictMode: true,
-  experimental: {
-    typedRoutes: true
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com'
-      }
-    ]
-  }
-};
+import createNextIntlPlugin from 'next-intl/plugin'
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    domains: ['images.unsplash.com'],
+  },
+}
+
+export default withNextIntl(nextConfig)

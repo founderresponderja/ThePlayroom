@@ -1,13 +1,15 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import createMiddleware from 'next-intl/middleware'
+import { clerkMiddleware } from '@clerk/nextjs/server'
 
-const isPublicRoute = createRouteMatcher([
-  '/(.*)',
-])
+const intlMiddleware = createMiddleware({
+  locales: ['pt', 'en', 'es'],
+  defaultLocale: 'pt'
+})
 
 export default clerkMiddleware((auth, req) => {
-  // no protection needed on landing page
+  return intlMiddleware(req)
 })
 
 export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)']
 }
