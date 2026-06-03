@@ -1,16 +1,19 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
-import './globals.css';
+import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
+import { ClerkProvider } from '@clerk/nextjs'
+import './globals.css'
 
 export const metadata: Metadata = {
   title: 'The Playroom',
-  description: 'Privacy-first lifestyle matchmaking for the consensual non-monogamy community.'
-};
+  description: 'Privacy-first lifestyle matchmaking for the consensual non-monogamy community.',
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" data-theme="dark">
-      <body>{children}</body>
+    <html lang="pt" suppressHydrationWarning>
+      <body>
+        <ClerkProvider>{children}</ClerkProvider>
+      </body>
     </html>
-  );
+  )
 }

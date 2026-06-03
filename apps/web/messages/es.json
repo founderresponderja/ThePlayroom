@@ -1,0 +1,113 @@
+{
+  "nav": {
+    "signIn": "Iniciar sesión",
+    "joinFree": "Unirse gratis",
+    "toggleLight": "Modo claro",
+    "toggleDark": "Modo oscuro"
+  },
+  "ageGate": {
+    "title": "¿Tienes 18 años o más?",
+    "subtitle": "The Playroom es una plataforma exclusiva para adultos.",
+    "confirm": "Sí, tengo 18+",
+    "deny": "No, salir"
+  },
+  "hero": {
+    "badge": "Bienvenido al lifestyle",
+    "headline": "Tu espacio. Tus reglas. Tu comunidad.",
+    "subheadline": "Matchmaking privado para singles y parejas en el lifestyle. Verificado, encriptado, sin juicios.",
+    "cta": "Unirse gratis",
+    "ctaSecondary": "Saber más"
+  },
+  "howItWorks": {
+    "title": "Cómo funciona",
+    "step1Title": "Crea tu perfil",
+    "step1Desc": "Elige tu tipo de cuenta y personaliza tu perfil con fotos y bio.",
+    "step2Title": "Haz el Kink Test",
+    "step2Desc": "Descubre tu arquetipo y tus preferencias con nuestro test Yes/No/Maybe.",
+    "step3Title": "Haz match",
+    "step3Desc": "Usuarios gratuitos reciben matches aleatorios. VIP usa IA para compatibilidad real.",
+    "step4Title": "Encuéntrate",
+    "step4Desc": "Reserva eventos en swing clubs verificados. La ubicación exacta solo se muestra tras aceptar la reserva."
+  },
+  "accountTypes": {
+    "title": "¿Para quién es The Playroom?",
+    "femaleSingle": "Single Femenina",
+    "femaleSingleDesc": "Explora el lifestyle a tu ritmo, con total control y privacidad.",
+    "maleSingle": "Single Masculino",
+    "maleSingleDesc": "Conéctate con singles y parejas que comparten tus intereses.",
+    "coupleMF": "Pareja MF",
+    "coupleMM": "Pareja MM",
+    "coupleFF": "Pareja FF",
+    "coupleDesc": "Exploración en pareja, con perfiles individuales y matches compartidos.",
+    "swingClub": "Swing Club",
+    "swingClubDesc": "Gestiona eventos, reservas y tu comunidad en una plataforma dedicada.",
+    "sexShop": "Sex Shop",
+    "sexShopDesc": "Vende tus productos a una comunidad adulta verificada y discreta."
+  },
+  "privacy": {
+    "title": "Privacidad y seguridad primero",
+    "e2eTitle": "Mensajes E2E",
+    "e2eDesc": "Cifrado de extremo a extremo real. El servidor nunca lee tus mensajes.",
+    "verifiedTitle": "Perfiles verificados",
+    "verifiedDesc": "Verificación por foto, video y redes sociales. Siempre sabes con quién hablas.",
+    "locationTitle": "Ubicación protegida",
+    "locationDesc": "La ubicación exacta de un evento solo se revela después de aceptar tu reserva.",
+    "gdprTitle": "Cumple con RGPD",
+    "gdprDesc": "Tus datos de preferencias son sensibles. Los tratamos con el máximo cuidado."
+  },
+  "kinkTest": {
+    "title": "The Kink Test",
+    "subtitle": "Descubre tu arquetipo",
+    "desc": "Un cuestionario Yes/No/Maybe inspirado en las mejores referencias de la comunidad. Para cada actividad, dices que sí si la quieres, no si es límite o quizá si tienes curiosidad. Resultado: tu arquetipo de lifestyle + tus etiquetas de compatibilidad.",
+    "cta": "Hacer el test"
+  },
+  "events": {
+    "title": "Eventos y Swing Clubs",
+    "desc": "Descubre eventos cerca de ti. Reserva tu lugar. La ubicación exacta solo aparece después de aceptar tu reserva — tu privacidad siempre está protegida.",
+    "vipBadge": "VIP tiene prioridad en reservas"
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "desc": "Sex shops verificadas venden sus productos directamente a nuestra comunidad. Discreto, seguro, tras el age gate.",
+    "cta": "Explorar tienda"
+  },
+  "pricing": {
+    "title": "Planes",
+    "free": "Gratis",
+    "freeDesc": "5 matches/día, 10 mensajes/día, eventos públicos",
+    "vip": "VIP",
+    "monthly": "mes",
+    "annual": "año",
+    "femaleSinglePrice": "€9.99",
+    "maleSinglePrice": "€19.99",
+    "couplePrice": "€24.99",
+    "businessFree": "Gratis",
+    "businessAddon": "Gestión de Reservas",
+    "businessAddonPrice": "€19.99/mes",
+    "vipFeature1": "Matches ilimitados",
+    "vipFeature2": "Matching IA (solo VIP)",
+    "vipFeature3": "Ver quién te dio like",
+    "vipFeature4": "Fotos privadas",
+    "vipFeature5": "Prioridad en reservas",
+    "vipFeature6": "Filtros avanzados"
+  },
+  "faq": {
+    "title": "Preguntas frecuentes",
+    "q1": "¿Es realmente privado?",
+    "a1": "Sí. Los mensajes tienen cifrado E2E real — ni nosotros podemos leerlos. Tu ubicación exacta nunca se comparte sin tu permiso.",
+    "q2": "¿Cómo funciona la verificación?",
+    "a2": "Verificación por selfie (obligatoria), video (opcional) y redes sociales (opcional). Cada nivel añade un badge al perfil.",
+    "q3": "¿Los datos son seguros?",
+    "a3": "Sí. Las preferencias sexuales son datos sensibles bajo RGPD (Art. 9) y reciben protección reforzada. Puedes exportar o eliminar tus datos en cualquier momento.",
+    "q4": "¿Cuánto cuesta?",
+    "a4": "Hay un plan gratuito totalmente funcional. VIP comienza en €9.99/mes para singles femeninas. Cuentas de swing club y sex shop siempre son gratuitas."
+  },
+  "footer": {
+    "terms": "Términos de Uso",
+    "privacy": "Privacidad / RGPD",
+    "cookies": "Cookies",
+    "guidelines": "Reglas de la Comunidad",
+    "sellerTerms": "Términos de Vendedor",
+    "copyright": "© Amplia Solutions 2026"
+  }
+}
