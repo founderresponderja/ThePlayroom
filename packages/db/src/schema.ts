@@ -5,11 +5,14 @@ export const users = pgTable('users', {
   clerkUserId: varchar('clerk_user_id', { length: 191 }).notNull(),
   accountType: varchar('account_type', { length: 32 }).notNull(),
   displayName: varchar('display_name', { length: 100 }).notNull(),
-  ageVerifiedAt: timestamp('age_verified_at', { mode: 'string' }),
+  dateOfBirth: timestamp('date_of_birth', { mode: 'date' }),
+  ageVerifiedAt: timestamp('age_verified_at', { mode: 'date' }),
   verificationLevel: varchar('verification_level', { length: 32 }).notNull().default('none'),
+  onboardingComplete: boolean('onboarding_complete').notNull().default(false),
   subscriptionTier: varchar('subscription_tier', { length: 64 }),
   isVip: boolean('is_vip').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
   deletedBy: varchar('deleted_by', { length: 191 })
 });
