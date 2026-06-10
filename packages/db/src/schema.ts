@@ -33,8 +33,10 @@ export const photos = pgTable('photos', {
   userId: integer('user_id').notNull().references(() => users.id),
   url: text('url').notNull(),
   isPrivate: boolean('is_private').notNull().default(false),
+  isPrimary: boolean('is_primary').notNull().default(false),
   moderationStatus: varchar('moderation_status', { length: 32 }).notNull().default('pending'),
-  csamScanStatus: varchar('csam_scan_status', { length: 32 }).notNull().default('pending')
+  csamScanStatus: varchar('csam_scan_status', { length: 32 }).notNull().default('pending'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 
 export const quizResults = pgTable('quiz_results', {
@@ -43,8 +45,10 @@ export const quizResults = pgTable('quiz_results', {
   accountTypeAtTime: varchar('account_type_at_time', { length: 32 }).notNull(),
   answers: jsonb('answers').notNull().default('[]'),
   derivedTags: jsonb('derived_tags').notNull().default('[]'),
-  archetype: varchar('archetype', { length: 128 })
+  archetype: varchar('archetype', { length: 128 }),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
+
 
 export const clubs = pgTable('clubs', {
   id: serial('id').primaryKey(),
