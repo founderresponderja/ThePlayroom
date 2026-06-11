@@ -94,7 +94,8 @@ export const matches = pgTable('matches', {
   userBId: integer('user_b_id').notNull().references(() => users.id),
   algo: varchar('algo', { length: 32 }).notNull().default('random'),
   score: integer('score'),
-  status: varchar('status', { length: 32 }).notNull().default('pending')
+  status: varchar('status', { length: 32 }).notNull().default('pending'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 
 export const threads = pgTable('threads', {

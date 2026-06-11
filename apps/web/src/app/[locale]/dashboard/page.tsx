@@ -11,9 +11,15 @@ export default async function DashboardPage({ params }: { params: { locale: stri
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
         <h1 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>🍍 Dashboard</h1>
         <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-          Em construção. O feed de matches e mensagens vêm a seguir.
+          Bem-vindo ao The Playroom.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <Link href={`/${params.locale}/feed`} style={{ display: 'block', background: 'var(--primary)', borderRadius: '0.75rem', padding: '1rem', color: 'white', textDecoration: 'none', fontWeight: 600 }}>
+            🍍 Ir para o feed
+          </Link>
+          <Link href={`/${params.locale}/matches`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
+            💬 Os meus matches
+          </Link>
           <Link href={`/${params.locale}/profile`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
             👤 Ver o meu perfil
           </Link>
