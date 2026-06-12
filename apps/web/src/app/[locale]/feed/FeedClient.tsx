@@ -35,6 +35,7 @@ export default function FeedClient({ isVip }: { isVip: boolean }) {
   const [actionLoading, setActionLoading] = useState(false)
   const [mutualMatch, setMutualMatch]     = useState<Candidate | null>(null)
   const [photoIndex, setPhotoIndex]       = useState(0)
+  const [limitReached, setLimitReached]   = useState(false)
 
   useEffect(() => { void loadFeed() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -42,6 +43,11 @@ export default function FeedClient({ isVip }: { isVip: boolean }) {
     setLoading(true)
     try {
       const res = await fetch('/api/feed')
+      if (res.status === 429) {
+        setLimitReached(true)
+        setLoading(false)
+        return
+      }
       const data = (await res.json()) as Candidate[]
       setCandidates(data)
     } catch { /* ignore */ }
@@ -88,6 +94,27 @@ export default function FeedClient({ isVip }: { isVip: boolean }) {
           <button onClick={() => router.push(`/${locale}/messages`)} className="btn-primary" style={{ padding: '0.875rem 1.5rem' }}>Enviar mensagem</button>
           <button onClick={() => setMutualMatch(null)} className="btn-outline" style={{ padding: '0.875rem 1.5rem' }}>Continuar a explorar</button>
         </div>
+      </div>
+    )
+  }
+
+  // ── Daily limit reached (free plan) ────────────────────────────────────────
+  if (limitReached) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🍍</div>
+        <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>Limite diário atingido</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
+          O plano gratuito permite 5 matches por dia.<br />
+          Faz upgrade para VIP e tem matches ilimitados.
+        </p>
+        <button
+          onClick={() => router.push(`/${locale}/pricing`)}
+          className="btn-primary"
+          style={{ padding: '0.875rem 1.5rem' }}
+        >
+          Ver planos VIP 💎
+        </button>
       </div>
     )
   }

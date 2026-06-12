@@ -32,6 +32,12 @@ export default async function DashboardPage({ params }: { params: { locale: stri
           <Link href={`/${params.locale}/kink-test`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
             🍍 The Kink Test
           </Link>
+          <Link href={`/${params.locale}/pricing`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
+            💎 Planos VIP
+          </Link>
+          <Link href={`/${params.locale}/account`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
+            ⚙️ Conta e subscrição
+          </Link>
         </div>
       </div>
     </div>

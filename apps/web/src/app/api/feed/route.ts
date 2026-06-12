@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, users, profiles, photos, matches, eq, and, ne, notInArray, isNotNull, sql } from '@playroom/db'
+import { db, users, profiles, photos, matches, eq, and, ne, notInArray, isNotNull, sql, gte } from '@playroom/db'
 
 export async function GET() {
   const { userId } = await auth()
@@ -11,6 +11,25 @@ export async function GET() {
   })
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (!currentUser.onboardingComplete) return NextResponse.json({ error: 'Onboarding required' }, { status: 403 })
+
+  // Enforce daily match limit for free users
+  if (!currentUser.isVip) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    // createdAt is timestamp({ mode: 'string' }) — compare with ISO string
+    const todayMatches = await db.query.matches.findMany({
+      where: and(
+        eq(matches.userAId, currentUser.id),
+        gte(matches.createdAt, today.toISOString()),
+      ),
+    })
+    if (todayMatches.length >= 5) {
+      return NextResponse.json(
+        { error: 'Limite diário atingido. Faz upgrade para VIP para matches ilimitados.', limitReached: true },
+        { status: 429 },
+      )
+    }
+  }
 
   const seenMatches = await db.query.matches.findMany({
     where: eq(matches.userAId, currentUser.id),
