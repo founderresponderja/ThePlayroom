@@ -11,11 +11,13 @@ export const users = pgTable('users', {
   onboardingComplete: boolean('onboarding_complete').notNull().default(false),
   subscriptionTier: varchar('subscription_tier', { length: 64 }),
   isVip: boolean('is_vip').notNull().default(false),
+  publicKey: text('public_key'),                        // NaCl public key for E2E sealed boxes
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
   deletedBy: varchar('deleted_by', { length: 191 })
 });
+
 
 export const profiles = pgTable('profiles', {
   userId: integer('user_id').notNull().references(() => users.id),

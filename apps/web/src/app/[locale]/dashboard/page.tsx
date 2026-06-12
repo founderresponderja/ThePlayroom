@@ -20,6 +20,9 @@ export default async function DashboardPage({ params }: { params: { locale: stri
           <Link href={`/${params.locale}/matches`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
             💬 Os meus matches
           </Link>
+          <Link href={`/${params.locale}/messages`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
+            🔒 Mensagens encriptadas
+          </Link>
           <Link href={`/${params.locale}/profile`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
             👤 Ver o meu perfil
           </Link>
