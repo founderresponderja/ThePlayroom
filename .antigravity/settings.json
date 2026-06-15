@@ -1,0 +1,5 @@
+{
+  "terminal.integrated.env.windows": {
+    "PATH": "C:\\Users\\101114\\OneDrive - Santa Casa da Misericórdia de Lisboa\\Documentos\\Amplia\\apps\\node-v24.16.0-win-x64;${env:PATH}"
+  }
+}
