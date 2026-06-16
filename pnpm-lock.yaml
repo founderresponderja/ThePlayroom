@@ -146,6 +146,9 @@ importers:
       '@clerk/nextjs':
         specifier: ^5.7.2
         version: 5.7.6(next@14.2.5)(react-dom@18.3.1)(react@18.3.1)
+      '@googlemaps/js-api-loader':
+        specifier: ^2.1.1
+        version: 2.1.1
       '@playroom/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -215,6 +218,10 @@ importers:
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
+    devDependencies:
+      '@types/google.maps':
+        specifier: ^3.65.1
+        version: 3.65.1
 
   packages/config:
     dependencies:
@@ -2967,6 +2974,12 @@ packages:
     resolution: {integrity: sha512-k2Ty1JcVojjJFwrg/ThKi2ujJ7XNLYaFGNB/bWT9wGR+oSMJHMa5w+CUq6p/pVrKeNNgA7pCqEcjSnHVoqJQFw==}
     dev: false
 
+  /@googlemaps/js-api-loader@2.1.1:
+    resolution: {integrity: sha512-yUpAwksbHrlZIWD49JmveNSfBG4oAK0AwMknfSaPMnP5N7UT8oFRVCqwjGb1XQovi//7KLbPQKZpbofiLGzpDw==}
+    dependencies:
+      '@types/google.maps': 3.65.1
+    dev: false
+
   /@graphql-typed-document-node/core@3.2.0(graphql@15.8.0):
     resolution: {integrity: sha512-mB9oAsNCm9aM3/SOv4YtBMqZbYj10R7dkq8byBqxGY/ncFwhf2oQzMV+LCRlWoDSEBJ3COiR1yeDvMtsoOsuFQ==}
     peerDependencies:
@@ -3842,6 +3855,9 @@ packages:
       '@types/qs': 6.15.1
       '@types/serve-static': 1.15.10
     dev: true
+
+  /@types/google.maps@3.65.1:
+    resolution: {integrity: sha512-O9monmoXfyWsuyR4Wz3TZU26qai9y7jUV7DSRySluae6O5tQt3Obw5ETt0HKfNsjctnlF/yx/Tfn3WQNmKRXZA==}
 
   /@types/http-cache-semantics@4.2.0:
     resolution: {integrity: sha512-L3LgimLHXtGkWikKnsPg0/VFx9OGZaC+eN1u4r+OB1XRqH3meBIAVC2zr1WdMH+RHmnRkqliQAOHNJ/E0j/e0Q==}

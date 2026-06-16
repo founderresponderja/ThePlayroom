@@ -32,6 +32,12 @@ export default async function DashboardPage({ params }: { params: { locale: stri
           <Link href={`/${params.locale}/kink-test`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
             🍍 The Kink Test
           </Link>
+          <Link href={`/${params.locale}/events`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
+            📅 Eventos
+          </Link>
+          <Link href={`/${params.locale}/clubs`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
+            🏛️ Swing Clubs
+          </Link>
           <Link href={`/${params.locale}/pricing`} style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}>
             💎 Planos VIP
           </Link>

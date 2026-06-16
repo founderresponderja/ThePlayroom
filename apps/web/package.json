@@ -13,6 +13,7 @@
     "@aws-sdk/client-s3": "^3.1065.0",
     "@aws-sdk/s3-request-presigner": "^3.1065.0",
     "@clerk/nextjs": "^5.7.2",
+    "@googlemaps/js-api-loader": "^2.1.1",
     "@playroom/core": "workspace:*",
     "@playroom/db": "workspace:*",
     "@playroom/ui": "workspace:*",
@@ -36,5 +37,8 @@
     "svix": "^1.21.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "@types/google.maps": "^3.65.1"
   }
 }
