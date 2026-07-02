@@ -30,6 +30,11 @@ export default async function DashboardPage({
           🔧 Admin
         </Link>
       </div>
+      <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+        <Link href={`/${params.locale}/legal`} style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textDecoration: 'none' }}>
+          Documentos Legais · © Amplia Solutions 2026
+        </Link>
+      </div>
     </div>
   )
 }
