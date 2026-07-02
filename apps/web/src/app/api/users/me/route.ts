@@ -1,46 +1,41 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, users, eq } from '@playroom/db'
+import { db, users } from '@playroom/db'
+import { sql } from 'drizzle-orm'
 
 export async function GET() {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
-  return NextResponse.json(user ?? null)
+  try {
+    const userResult = await (db as any).execute(sql`select * from users where clerk_user_id = ${userId} limit 1`)
+    const user = userResult?.[0] as { id: number; [key: string]: any } | undefined
+
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    return NextResponse.json(user)
+  } catch (error) {
+    console.error('Error fetching user:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function PATCH(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body: Record<string, unknown> = await req.json()
+  try {
+    const body = await req.json()
+    const userResult = await (db as any).execute(sql`select * from users where clerk_user_id = ${userId} limit 1`)
+    const user = userResult?.[0] as { id: number } | undefined
 
-  // Whitelist allowed fields only
-  const allowed = [
-    'accountType',
-    'displayName',
-    'dateOfBirth',
-    'ageVerifiedAt',
-    'onboardingComplete',
-  ] as const
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const data: Record<string, unknown> = {}
-  for (const key of allowed) {
-    if (key in body) data[key] = body[key]
+    const updated = await (db as any).execute(sql`update users set display_name = ${body.displayName ?? ''} where id = ${user.id} returning *`)
+
+    return NextResponse.json(updated?.[0] ?? null)
+  } catch (error) {
+    console.error('Error updating user:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-
-  // Coerce date strings → Date objects (schema uses mode:'date')
-  if (data.dateOfBirth) data.dateOfBirth = new Date(data.dateOfBirth as string)
-  if (data.ageVerifiedAt) data.ageVerifiedAt = new Date(data.ageVerifiedAt as string)
-
-  const updated = await db
-    .update(users)
-    .set({ ...data, updatedAt: new Date().toISOString() })
-    .where(eq(users.clerkUserId, userId))
-    .returning()
-
-  return NextResponse.json(updated[0] ?? null)
 }
