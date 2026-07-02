@@ -18,6 +18,12 @@ export default async function DashboardPage({
       </p>
       <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <Link
+          href={`/${params.locale}/verification`}
+          style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}
+        >
+          ✅ Verificar perfil
+        </Link>
+        <Link
           href={`/${params.locale}/admin`}
           style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}
         >

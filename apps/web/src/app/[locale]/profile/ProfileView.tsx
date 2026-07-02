@@ -178,6 +178,15 @@ export default function ProfileView({
             ✏️ Completa o teu perfil
           </button>
         )}
+        {(user.verificationLevel === 'none' || user.verificationLevel === 'photo') && (
+          <button
+            onClick={() => router.push(`/${locale}/verification`)}
+            className="btn-outline"
+            style={{ width: '100%', padding: '0.875rem', marginBottom: '1rem' }}
+          >
+            ✅ Verificar perfil
+          </button>
+        )}
         {!archetype && (
           <button onClick={() => router.push(`/${locale}/kink-test`)} className="btn-primary" style={{ width: '100%', padding: '0.875rem' }}>
             🍍 Fazer o Kink Test

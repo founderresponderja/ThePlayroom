@@ -57,6 +57,7 @@ export default function AdminDashboard({
     { label: '👥 Utilizadores', href: `/${locale}/admin/users` },
     { label: '🖼️ Moderação', href: `/${locale}/admin/moderation` },
     { label: '🚨 Reports', href: `/${locale}/admin/reports` },
+    { label: '✅ Verificações', href: `/${locale}/admin/verifications` },
     { label: '⚙️ Sistema', href: `/${locale}/admin/system` },
   ]
 

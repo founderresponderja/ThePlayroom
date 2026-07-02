@@ -41,6 +41,17 @@ export const photos = pgTable('photos', {
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 
+export const verifications = pgTable('verifications', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  type: varchar('type', { length: 32 }).notNull(),
+  status: varchar('status', { length: 32 }).notNull().default('pending'),
+  reviewedBy: integer('reviewed_by').references(() => users.id),
+  evidenceRef: text('evidence_ref'),
+  reviewedAt: timestamp('reviewed_at', { mode: 'string' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+});
+
 export const quizResults = pgTable('quiz_results', {
   userId: integer('user_id').notNull().references(() => users.id),
   quizVersion: varchar('quiz_version', { length: 64 }).notNull(),
