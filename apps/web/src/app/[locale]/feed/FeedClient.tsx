@@ -12,6 +12,8 @@ type Candidate = {
   primaryPhoto: string | null
   photoCount: number
   photos: string[]
+  compatibilityScore: number | null
+  sharedTags: string[]
 }
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
@@ -186,10 +188,22 @@ export default function FeedClient({ isVip }: { isVip: boolean }) {
 
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(to top, rgba(11,7,8,0.97), transparent)' }} />
           <div style={{ position: 'absolute', bottom: '1rem', left: '1rem', right: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
               <h2 style={{ color: 'white', fontSize: '1.4rem', fontWeight: 700 }}>{currentCandidate.displayName ?? 'Anónimo'}</h2>
               {currentCandidate.verificationLevel && currentCandidate.verificationLevel !== 'none' && <span>✅</span>}
               {currentCandidate.isVip && <span style={{ background: 'var(--primary)', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '999px' }}>VIP</span>}
+              {isVip && currentCandidate.compatibilityScore !== null && currentCandidate.compatibilityScore > 0 && (
+                <span style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                  fontSize: '0.65rem',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  fontWeight: 600,
+                }}>
+                  🍍 {currentCandidate.compatibilityScore}% compatível
+                </span>
+              )}
             </div>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
               {currentCandidate.accountType ? ACCOUNT_TYPE_LABELS[currentCandidate.accountType] : ''}

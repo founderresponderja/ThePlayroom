@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, users, profiles, photos, matches, eq, and, ne, notInArray, isNotNull, sql, gte } from '@playroom/db'
+import { db, users, profiles, photos, matches, quizResults, eq, and, ne, notInArray, isNotNull, sql, gte, desc } from '@playroom/db'
 
 export async function GET() {
   const { userId } = await auth()
@@ -11,6 +11,13 @@ export async function GET() {
   })
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (!currentUser.onboardingComplete) return NextResponse.json({ error: 'Onboarding required' }, { status: 403 })
+
+  // Get current user's quiz tags for VIP matching
+  const currentUserQuiz = await db.query.quizResults.findFirst({
+    where: eq(quizResults.userId, currentUser.id),
+    orderBy: (q) => [desc(q.createdAt)],
+  })
+  const currentUserTags = (currentUserQuiz?.derivedTags as string[] | null) ?? []
 
   // Enforce daily match limit for free users
   if (!currentUser.isVip) {
@@ -86,5 +93,46 @@ export async function GET() {
     }),
   )
 
-  return NextResponse.json(candidatesWithPhotos)
+  // VIP users get candidates ranked by compatibility
+  let finalCandidates: any[] = candidatesWithPhotos
+  if (currentUser.isVip && currentUserTags.length > 0) {
+    const candidatesWithTags = await Promise.all(
+      candidatesWithPhotos.map(async (candidate) => {
+        const quiz = await db.query.quizResults.findFirst({
+          where: eq(quizResults.userId, candidate.id),
+          orderBy: (q) => [desc(q.createdAt)],
+        })
+        return {
+          ...candidate,
+          tags: (quiz?.derivedTags as string[] | null) ?? [],
+        }
+      })
+    )
+
+    // Import rankCandidates from matching lib
+    const { rankCandidates } = await import('@/lib/matching')
+    const ranked = rankCandidates(
+      currentUserTags,
+      candidatesWithTags.map(c => ({ id: c.id, tags: c.tags }))
+    )
+
+    // Reorder candidates by compatibility score
+    const rankedIds = new Map(ranked.map(r => [r.id, r]))
+    finalCandidates = candidatesWithTags
+      .map(c => ({
+        ...c,
+        compatibilityScore: rankedIds.get(c.id)?.score ?? 0,
+        sharedTags: rankedIds.get(c.id)?.sharedTags ?? [],
+      }))
+      .sort((a, b) => b.compatibilityScore - a.compatibilityScore)
+  } else {
+    // Free users: random order (already RANDOM() from DB)
+    finalCandidates = candidatesWithPhotos.map(c => ({
+      ...c,
+      compatibilityScore: null,
+      sharedTags: [],
+    }))
+  }
+
+  return NextResponse.json(finalCandidates)
 }
