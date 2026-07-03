@@ -1,6 +1,6 @@
 import Stripe from 'stripe'
 import { headers } from 'next/headers'
-import { db, subscriptions, users, entitlements, eq } from '@playroom/db'
+import { db, subscriptions, users, entitlements, orders, eq } from '@playroom/db'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -54,6 +54,13 @@ export async function POST(req: Request) {
           .where(eq(subscriptions.userId, Number(userId)))
       }
     }
+
+      const orderId = session.metadata?.orderId
+      if (orderId) {
+        await db.update(orders)
+          .set({ status: 'paid' })
+          .where(eq(orders.id, Number(orderId)))
+      }
   }
 
   // ── customer.subscription.created / updated ─────────────────────────────────

@@ -24,6 +24,12 @@ export default async function DashboardPage({
           ✅ Verificar perfil
         </Link>
         <Link
+          href={`/${params.locale}/shop`}
+          style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}
+        >
+          🛍️ Marketplace
+        </Link>
+        <Link
           href={`/${params.locale}/admin`}
           style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}
         >
