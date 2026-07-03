@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { getPresignedUploadUrl } from '@/lib/r2'
 import { randomUUID } from 'crypto'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE_MB = 10
 
 export async function POST(req: Request) {
@@ -15,21 +15,14 @@ export async function POST(req: Request) {
     sizeMb: number
   }
 
-  if (!(ALLOWED_TYPES as readonly string[]).includes(contentType)) {
-    return NextResponse.json(
-      { error: 'Tipo de ficheiro não permitido. Usa JPEG, PNG ou WebP.' },
-      { status: 400 },
-    )
+  if (!ALLOWED_TYPES.includes(contentType)) {
+    return NextResponse.json({ error: 'Tipo de ficheiro não permitido.' }, { status: 400 })
   }
 
   if (sizeMb > MAX_SIZE_MB) {
-    return NextResponse.json(
-      { error: `Ficheiro demasiado grande. Máximo ${MAX_SIZE_MB}MB.` },
-      { status: 400 },
-    )
+    return NextResponse.json({ error: `Máximo ${MAX_SIZE_MB}MB.` }, { status: 400 })
   }
 
-  // noUncheckedIndexedAccess: split('/')[1] is string | undefined — guard it
   const ext = contentType.split('/')[1] ?? 'jpg'
   const key = `photos/${userId}/${randomUUID()}.${ext}`
   const uploadUrl = await getPresignedUploadUrl(key, contentType)
