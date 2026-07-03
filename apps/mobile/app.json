@@ -1,19 +1,31 @@
 {
   "expo": {
     "name": "The Playroom",
-    "slug": "the-playroom-mobile",
-    "version": "0.1.0",
-    "sdkVersion": "48.0.0",
-    "platforms": ["ios", "android"],
-    "assetBundlePatterns": ["**/*"],
+    "slug": "the-playroom",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "theplayroom",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0708"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "pt.theplayroom.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0708"
-      }
-    }
+      },
+      "package": "pt.theplayroom.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
   }
 }
