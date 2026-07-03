@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, reservations, events, users, eq } from '@playroom/db'
+import { notifyUser } from '@/lib/notifications'
 
 export async function POST(
   _req: Request,
@@ -37,6 +38,12 @@ export async function POST(
     })
     .where(eq(reservations.id, Number(params.id)))
     .returning()
+
+  await notifyUser(reservation.userId, {
+    title: '✅ Reserva aceite!',
+    body: 'A tua reserva foi aceite. A localização foi revelada.',
+    url: `/pt/events/${reservation.eventId}`,
+  })
 
   return NextResponse.json(updated)
 }

@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { db, users, eq } from '@playroom/db'
+import PushWrapper from './PushWrapper'
 
 export default async function DashboardPage({
   params,
@@ -9,6 +11,11 @@ export default async function DashboardPage({
 }) {
   const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.clerkUserId, userId),
+  })
+  if (!user) redirect(`/${params.locale}/sign-in`)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '2rem' }}>
@@ -36,6 +43,7 @@ export default async function DashboardPage({
           🔧 Admin
         </Link>
       </div>
+      <PushWrapper userId={user.id} />
       <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
         <Link href={`/${params.locale}/legal`} style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textDecoration: 'none' }}>
           Documentos Legais · © Amplia Solutions 2026

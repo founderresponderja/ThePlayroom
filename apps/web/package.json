@@ -14,15 +14,16 @@
     "@aws-sdk/s3-request-presigner": "^3.1065.0",
     "@clerk/nextjs": "^5.7.2",
     "@googlemaps/js-api-loader": "^2.1.1",
-    "@types/google.maps": "^3.55.0",
     "@playroom/core": "workspace:*",
     "@playroom/db": "workspace:*",
     "@playroom/ui": "workspace:*",
     "@stripe/stripe-js": "^9.8.0",
+    "@types/google.maps": "^3.55.0",
     "@types/libsodium-wrappers": "^0.8.2",
     "@types/node": "^20.11.5",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
+    "@types/web-push": "^3.6.4",
     "ably": "^2.22.1",
     "autoprefixer": "^10.4.17",
     "drizzle-orm": "^0.30.0",
@@ -37,6 +38,7 @@
     "stripe": "^16.12.0",
     "svix": "^1.21.0",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "web-push": "^3.6.7"
   }
 }

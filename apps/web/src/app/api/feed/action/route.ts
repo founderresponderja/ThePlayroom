@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, users, matches, eq, and } from '@playroom/db'
+import { notifyUser } from '@/lib/notifications'
 
 export async function POST(req: Request) {
   const { userId } = await auth()
@@ -54,6 +55,12 @@ export async function POST(req: Request) {
         .where(and(eq(matches.userAId, targetUserId), eq(matches.userBId, currentUser.id)))
 
       isMutualMatch = true
+
+      await notifyUser(Number(targetUserId), {
+        title: '🍍 Novo match!',
+        body: `Tens um novo match no The Playroom`,
+        url: '/pt/matches',
+      })
     }
   }
 

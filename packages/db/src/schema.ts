@@ -142,6 +142,15 @@ export const entitlements = pgTable('entitlements', {
   source: varchar('source', { length: 128 }).notNull().default('stripe')
 });
 
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+});
+
 export const shops = pgTable('shops', {
   id: serial('id').primaryKey(),
   ownerUserId: integer('owner_user_id').notNull().references(() => users.id),
