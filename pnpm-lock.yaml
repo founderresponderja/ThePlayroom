@@ -161,6 +161,9 @@ importers:
       '@stripe/stripe-js':
         specifier: ^9.8.0
         version: 9.8.0
+      '@types/google.maps':
+        specifier: ^3.55.0
+        version: 3.65.1
       '@types/libsodium-wrappers':
         specifier: ^0.8.2
         version: 0.8.2
@@ -218,10 +221,6 @@ importers:
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
-    devDependencies:
-      '@types/google.maps':
-        specifier: ^3.65.1
-        version: 3.65.1
 
   packages/config:
     dependencies:
@@ -3858,6 +3857,7 @@ packages:
 
   /@types/google.maps@3.65.1:
     resolution: {integrity: sha512-O9monmoXfyWsuyR4Wz3TZU26qai9y7jUV7DSRySluae6O5tQt3Obw5ETt0HKfNsjctnlF/yx/Tfn3WQNmKRXZA==}
+    dev: false
 
   /@types/http-cache-semantics@4.2.0:
     resolution: {integrity: sha512-L3LgimLHXtGkWikKnsPg0/VFx9OGZaC+eN1u4r+OB1XRqH3meBIAVC2zr1WdMH+RHmnRkqliQAOHNJ/E0j/e0Q==}
