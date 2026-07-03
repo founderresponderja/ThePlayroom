@@ -6,10 +6,15 @@ import { AgeGate } from '../../components/AgeGate'
 
 export const metadata = {
   title: 'The Playroom',
-  description: 'Privacy-first lifestyle matchmaking',
+  description: 'Matchmaking privado para o lifestyle.',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: '/favicon.svg',
   },
+  manifest: '/manifest.json',
 }
 
 interface LocaleLayoutProps {

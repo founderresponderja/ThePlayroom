@@ -1,0 +1,17 @@
+{
+  "name": "The Playroom",
+  "short_name": "Playroom",
+  "description": "Matchmaking privado para o lifestyle",
+  "start_url": "/pt",
+  "display": "standalone",
+  "background_color": "#0B0708",
+  "theme_color": "#FF1F3D",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
