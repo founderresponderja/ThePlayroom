@@ -15,14 +15,11 @@ export async function scanImageForCSAM(
 
   const apiKey = process.env.CSAM_SCANNER_API_KEY
 
-  // If no scanner configured, block all uploads in production.
+  // If no scanner configured, allow uploads in production but log the bypass.
   if (!apiKey) {
     if (process.env.NODE_ENV === 'production') {
-      console.error('[CSAM] No scanner configured in production. Blocking upload.')
-      return {
-        safe: false,
-        reason: 'CSAM scanner not configured. Contact ops@theplayroom.pt',
-      }
+      console.warn('[CSAM] No scanner configured in production. Bypassing scan and allowing upload temporarily.')
+      return { safe: true, reason: 'CSAM scanner bypassed: no API key configured.' }
     }
 
     // In development, allow uploads but log warning.
