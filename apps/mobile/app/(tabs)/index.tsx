@@ -42,8 +42,8 @@ export default function FeedScreen() {
       const data = await apiFetch<Candidate[]>('/api/feed', token)
       setCandidates(data)
       setIndex(0)
-    } catch {
-      // ignore feed errors for MVP
+    } catch (error) {
+      console.error('[mobile] failed to load feed', error)
     }
     setLoading(false)
   }, [getToken])
@@ -67,8 +67,8 @@ export default function FeedScreen() {
         },
       )
       if (data.isMutualMatch) setMutualMatch(candidate)
-    } catch {
-      // ignore action errors for MVP
+    } catch (error) {
+      console.error('[mobile] failed to submit feed action', error)
     }
     setIndex((i) => i + 1)
     setActionLoading(false)

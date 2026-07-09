@@ -23,15 +23,27 @@ export default function VerificationQueue({
 }) {
   const [items, setItems] = useState(initial)
   const [loading, setLoading] = useState<number | null>(null)
+  const [error, setError] = useState('')
 
   const handleAction = async (id: number, status: 'approved' | 'rejected') => {
     setLoading(id)
-    await fetch(`/api/admin/verifications/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    setItems((prev) => prev.filter((v) => v.id !== id))
+    setError('')
+    try {
+      const res = await fetch(`/api/admin/verifications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) {
+        throw new Error(data.error ?? 'Falha ao atualizar verificação')
+      }
+
+      setItems((prev) => prev.filter((v) => v.id !== id))
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'Erro inesperado.')
+    }
     setLoading(null)
   }
 
@@ -40,6 +52,10 @@ export default function VerificationQueue({
       <h1 style={{ color: 'var(--text)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem' }}>
         ✅ Fila de verificações ({items.length})
       </h1>
+
+      {error && (
+        <p style={{ color: '#f87171', marginBottom: '1rem' }}>{error}</p>
+      )}
 
       {items.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>

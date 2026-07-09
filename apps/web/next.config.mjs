@@ -7,6 +7,9 @@ const nextConfig = {
   images: {
     domains: ['images.unsplash.com'],
   },
+  outputFileTracingIncludes: {
+    '/(.*)': ['./messages/**/*.json'],
+  },
 }
 
 export default withNextIntl(nextConfig)

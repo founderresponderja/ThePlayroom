@@ -1,6 +1,16 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, clubs, users, eq } from '@playroom/db'
+import { z } from 'zod'
+
+const createClubSchema = z.object({
+  name: z.string().trim().min(2).max(200),
+  description: z.string().trim().max(4000).optional(),
+  address: z.string().trim().max(500).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  amenities: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
+})
 
 export async function GET() {
   // clubs has no createdAt — order by id desc
@@ -23,28 +33,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Only SWING_CLUB accounts can create clubs' }, { status: 403 })
   }
 
-  const { name, description, address, lat, lng, amenities } = (await req.json()) as {
-    name: string
-    description?: string
-    address?: string
-    lat?: number
-    lng?: number
-    amenities?: string[]
+  let payload: z.infer<typeof createClubSchema>
+  try {
+    const parsed = createClubSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: 'Invalid club payload',
+          details: parsed.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        },
+        { status: 400 },
+      )
+    }
+
+    payload = parsed.data
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+  if ((payload.lat == null) !== (payload.lng == null)) {
+    return NextResponse.json({ error: 'lat and lng must be provided together' }, { status: 400 })
+  }
 
   const [club] = await db
     .insert(clubs)
     .values({
       ownerUserId: user.id,
-      name,
+      name: payload.name,
       // description is notNull with default '' — pass undefined (not null) to use DB default
-      description: description,
-      address:     address ?? null,
+      description: payload.description,
+      address:     payload.address ?? null,
       // clubs schema stores coordinates inside the jsonb 'location' column (no separate lat/lng)
-      location:    lat != null && lng != null ? { lat, lng } : null,
-      amenities:   amenities ?? [],
+      location:    payload.lat != null && payload.lng != null ? { lat: payload.lat, lng: payload.lng } : null,
+      amenities:   payload.amenities ?? [],
       verified:    false,
     })
     .returning()

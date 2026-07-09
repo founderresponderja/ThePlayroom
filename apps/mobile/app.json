@@ -26,6 +26,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e01197ae-c97a-4200-aad7-8983b6324536"
+      }
+    },
+    "owner": "ampliasolutions"
   }
 }

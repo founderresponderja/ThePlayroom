@@ -10,6 +10,7 @@ interface PageProps {
 
 export default function Page({ params }: PageProps) {
   const hero = useTranslations('hero')
+  const nav = useTranslations('nav')
   const how = useTranslations('howItWorks')
   const account = useTranslations('accountTypes')
   const privacy = useTranslations('privacy')
@@ -81,11 +82,11 @@ export default function Page({ params }: PageProps) {
               {hero('subheadline')}
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href={{ pathname: localePath, hash: 'pricing' }} className="btn-primary inline-flex items-center justify-center">
-                {hero('cta')}
+              <Link href={`/${params.locale}/sign-up`} className="btn-primary inline-flex items-center justify-center">
+                {nav('joinFree')}
               </Link>
-              <Link href={{ pathname: localePath, hash: 'how-it-works' }} className="btn-outline inline-flex items-center justify-center">
-                {hero('ctaSecondary')}
+              <Link href={`/${params.locale}/sign-in`} className="btn-outline inline-flex items-center justify-center">
+                {nav('signIn')}
               </Link>
             </div>
             <div className="mt-10 flex flex-wrap gap-3 text-sm text-[var(--text-muted)]">

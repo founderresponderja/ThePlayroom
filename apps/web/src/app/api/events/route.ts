@@ -1,8 +1,8 @@
-import { auth } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db, events, users, eq, gte } from '@playroom/db'
+import { getValidClerkSession } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(_req: NextRequest) {
   const upcoming = await db.query.events.findMany({
     // startsAt is timestamp({ mode: 'string' }) — compare with ISO string
     where: gte(events.startsAt, new Date().toISOString()),
@@ -12,8 +12,8 @@ export async function GET() {
   return NextResponse.json(upcoming)
 }
 
-export async function POST(req: Request) {
-  const { userId } = await auth()
+export async function POST(req: NextRequest) {
+  const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const user = await db.query.users.findFirst({

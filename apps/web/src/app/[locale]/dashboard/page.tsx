@@ -4,6 +4,28 @@ import { redirect } from 'next/navigation'
 import { db, users, eq } from '@playroom/db'
 import PushWrapper from './PushWrapper'
 
+const accountTypeLabels: Record<string, string> = {
+  FEMALE_SINGLE: '👩 Single Feminina',
+  MALE_SINGLE: '👨 Single Masculino',
+  COUPLE_MF: '👫 Casal MF',
+  COUPLE_MM: '👬 Casal MM',
+  COUPLE_FF: '👭 Casal FF',
+  SWING_CLUB: '🏛️ Swing Club',
+  SEX_SHOP: '🛍️ Sex Shop',
+}
+
+const verificationLabels: Record<string, string> = {
+  none: 'Não verificado',
+  photo: 'Verificação por foto',
+  video: 'Verificação por vídeo',
+  social: 'Verificação social',
+}
+
+const subscriptionTierLabels: Record<string, string> = {
+  free: 'Free',
+  vip: 'VIP',
+}
+
 export default async function DashboardPage({
   params,
 }: {
@@ -17,31 +39,81 @@ export default async function DashboardPage({
   })
   if (!user) redirect(`/${params.locale}/sign-in`)
 
+  const accountTypeLabel = accountTypeLabels[user.accountType] ?? user.accountType
+  const verificationLabel = verificationLabels[user.verificationLevel ?? 'none'] ?? 'Não verificado'
+  const subscriptionTierLabel = subscriptionTierLabels[user.subscriptionTier ?? 'free'] ?? (user.subscriptionTier ?? 'free')
+
+  const navLinks = [
+    { href: `/${params.locale}/verification`, label: '✅ Verificar perfil' },
+    { href: `/${params.locale}/profile`, label: '👤 O meu perfil' },
+    { href: `/${params.locale}/messages`, label: '💬 Mensagens' },
+    { href: `/${params.locale}/events`, label: '📅 Eventos' },
+    { href: `/${params.locale}/dashboard/orders`, label: '🧾 As Minhas Compras' },
+  ]
+
+  if (user.accountType === 'SWING_CLUB') {
+    navLinks.push({ href: `/${params.locale}/club-setup`, label: '🏛️ Configurar clube' })
+    navLinks.push({ href: `/${params.locale}/clubs`, label: '🏛️ Diretório de clubes' })
+  }
+
+  if (user.accountType === 'SEX_SHOP') {
+    navLinks.push({ href: `/${params.locale}/shop-setup`, label: '🛍️ Configurar loja' })
+    navLinks.push({ href: `/${params.locale}/shop`, label: '🛍️ Marketplace' })
+    navLinks.push({ href: `/${params.locale}/dashboard/shop/orders`, label: '📦 Encomendas da Loja' })
+  }
+
+  navLinks.push({ href: `/${params.locale}/pricing`, label: '💎 Planos e subscrição' })
+  navLinks.push({ href: `/${params.locale}/admin`, label: '🔧 Admin' })
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '2rem' }}>
       <h1 style={{ color: 'var(--text)' }}>🍍 Dashboard</h1>
-      <p style={{ color: 'var(--text-muted)' }}>
-        Em construção. O feed de matches, mensagens e eventos vêm a seguir.
-      </p>
+      <p style={{ color: 'var(--text-muted)' }}>Resumo da tua conta e atalhos rápidos.</p>
+
+      <div
+        style={{
+          marginTop: '1.25rem',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '0.75rem',
+          padding: '1rem',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '0.75rem',
+        }}
+      >
+        <div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Tipo de conta</p>
+          <p style={{ color: 'var(--text)', fontWeight: 600 }}>{accountTypeLabel}</p>
+        </div>
+        <div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Verificação</p>
+          <p style={{ color: 'var(--text)', fontWeight: 600 }}>{verificationLabel}</p>
+        </div>
+        <div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Subscrição</p>
+          <p style={{ color: 'var(--text)', fontWeight: 600 }}>{subscriptionTierLabel}</p>
+        </div>
+      </div>
+
       <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <Link
-          href={`/${params.locale}/verification`}
-          style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}
-        >
-          ✅ Verificar perfil
-        </Link>
-        <Link
-          href={`/${params.locale}/shop`}
-          style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}
-        >
-          🛍️ Marketplace
-        </Link>
-        <Link
-          href={`/${params.locale}/admin`}
-          style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem', color: 'var(--text)', textDecoration: 'none' }}
-        >
-          🔧 Admin
-        </Link>
+        {navLinks.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            style={{
+              display: 'block',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '0.75rem',
+              padding: '1rem',
+              color: 'var(--text)',
+              textDecoration: 'none',
+            }}
+          >
+            {link.label}
+          </Link>
+        ))}
       </div>
       <PushWrapper userId={user.id} />
       <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>

@@ -1,9 +1,15 @@
-import { auth } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db, users, threads, messages, eq, and, or } from '@playroom/db'
+import { z } from 'zod'
+import { getValidClerkSession } from '@/lib/auth'
 
-export async function GET(req: Request) {
-  const { userId } = await auth()
+const sendMessageSchema = z.object({
+  threadId: z.number().int().positive(),
+  encryptedPayload: z.string().min(1),
+})
+
+export async function GET(req: NextRequest) {
+  const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const currentUser = await db.query.users.findFirst({
@@ -19,17 +25,16 @@ export async function GET(req: Request) {
   const threadId = Number(threadIdParam)
   if (isNaN(threadId)) return NextResponse.json({ error: 'Invalid threadId' }, { status: 400 })
 
-  // Verify user is a participant
   const thread = await db.query.threads.findFirst({
-    where: and(
-      eq(threads.id, threadId),
-      or(
-        eq(threads.participantAId, currentUser.id),
-        eq(threads.participantBId, currentUser.id),
-      ),
-    ),
+    where: eq(threads.id, threadId),
   })
   if (!thread) return NextResponse.json({ error: 'Thread not found' }, { status: 404 })
+
+  const isParticipant =
+    thread.participantAId === currentUser.id || thread.participantBId === currentUser.id
+  if (!isParticipant) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const threadMessages = await db.query.messages.findMany({
     where: eq(messages.threadId, threadId),
@@ -40,8 +45,8 @@ export async function GET(req: Request) {
   return NextResponse.json(threadMessages)
 }
 
-export async function POST(req: Request) {
-  const { userId } = await auth()
+export async function POST(req: NextRequest) {
+  const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const currentUser = await db.query.users.findFirst({
@@ -49,34 +54,34 @@ export async function POST(req: Request) {
   })
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  // threadId is integer (serial FK) — typed accordingly
-  const { threadId, encryptedPayload } = (await req.json()) as {
-    threadId: number
-    encryptedPayload: string
+  let payload: z.infer<typeof sendMessageSchema>
+  try {
+    const parsed = sendMessageSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid message payload' }, { status: 400 })
+    }
+    payload = parsed.data
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  if (!threadId || !encryptedPayload) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-  }
-
-  // Verify user is a participant
   const thread = await db.query.threads.findFirst({
-    where: and(
-      eq(threads.id, threadId),
-      or(
-        eq(threads.participantAId, currentUser.id),
-        eq(threads.participantBId, currentUser.id),
-      ),
-    ),
+    where: eq(threads.id, payload.threadId),
   })
   if (!thread) return NextResponse.json({ error: 'Thread not found' }, { status: 404 })
+
+  const isParticipant =
+    thread.participantAId === currentUser.id || thread.participantBId === currentUser.id
+  if (!isParticipant) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const result = await db
     .insert(messages)
     .values({
-      threadId,
+      threadId: payload.threadId,
       senderId: currentUser.id,
-      encryptedPayload,
+      encryptedPayload: payload.encryptedPayload,
     })
     .returning()
 

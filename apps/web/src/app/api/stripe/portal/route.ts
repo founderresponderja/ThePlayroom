@@ -19,7 +19,11 @@ export async function POST() {
     return NextResponse.json({ error: 'No subscription found' }, { status: 404 })
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://theplayroom.pt'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!baseUrl) {
+    console.error('[stripe/portal] Missing NEXT_PUBLIC_APP_URL')
+    return NextResponse.json({ error: 'Server misconfiguration: NEXT_PUBLIC_APP_URL' }, { status: 500 })
+  }
 
   const session = await stripe.billingPortal.sessions.create({
     customer: sub.stripeCustomerId,

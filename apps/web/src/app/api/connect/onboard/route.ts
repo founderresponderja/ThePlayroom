@@ -52,7 +52,11 @@ export async function POST() {
     }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://theplayroom.pt'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!baseUrl) {
+    console.error('[connect/onboard] Missing NEXT_PUBLIC_APP_URL')
+    return NextResponse.json({ error: 'Server misconfiguration: NEXT_PUBLIC_APP_URL' }, { status: 500 })
+  }
 
   const accountLink = await stripe.accountLinks.create({
     account: stripeAccountId,

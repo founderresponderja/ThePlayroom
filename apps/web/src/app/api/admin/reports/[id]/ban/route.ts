@@ -1,22 +1,52 @@
 import { NextResponse } from 'next/server'
-import { db } from '@playroom/db'
-import { sql } from 'drizzle-orm'
+import { db, reports, users, eq } from '@playroom/db'
 import { isAdmin } from '@/lib/admin'
+import { z } from 'zod'
+
+const idSchema = z.coerce.number().int().positive()
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const admin = await isAdmin()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
-    const reportId = Number(params.id)
-    const reportResult = await (db as any).execute(sql`select target_id as "targetId" from reports where id = ${reportId} limit 1`)
-    const targetId = reportResult?.[0]?.targetId
-
-    if (targetId) {
-      await (db as any).execute(sql`update users set deleted_at = ${new Date().toISOString()} where id = ${targetId}`)
+    const parsedId = idSchema.safeParse(params.id)
+    if (!parsedId.success) {
+      return NextResponse.json({ error: 'Invalid report id' }, { status: 400 })
     }
 
-    return NextResponse.json({ ok: true })
+    const reportId = parsedId.data
+    const report = await db.query.reports.findFirst({
+      where: eq(reports.id, reportId),
+    })
+    if (!report) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 })
+    }
+
+    if (report.targetType !== 'user') {
+      return NextResponse.json({ error: 'Ban action is only supported for user reports' }, { status: 400 })
+    }
+
+    const now = new Date().toISOString()
+
+    const targetUser = await db.query.users.findFirst({
+      where: eq(users.id, report.targetId),
+    })
+    if (!targetUser) {
+      return NextResponse.json({ error: 'Target user not found' }, { status: 404 })
+    }
+
+    await db
+      .update(users)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(eq(users.id, report.targetId))
+
+    await db
+      .update(reports)
+      .set({ status: 'resolved' })
+      .where(eq(reports.id, reportId))
+
+    return NextResponse.json({ ok: true, bannedUserId: report.targetId, reportId, status: 'resolved' })
   } catch (error) {
     console.error(error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

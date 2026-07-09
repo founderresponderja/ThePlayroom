@@ -37,7 +37,11 @@ export async function POST(req: Request) {
     stripeCustomerId = customer.id
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://theplayroom.pt'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!baseUrl) {
+    console.error('[stripe/checkout] Missing NEXT_PUBLIC_APP_URL')
+    return NextResponse.json({ error: 'Server misconfiguration: NEXT_PUBLIC_APP_URL' }, { status: 500 })
+  }
 
   const session = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,

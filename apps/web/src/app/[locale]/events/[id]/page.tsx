@@ -51,8 +51,8 @@ export default async function EventDetailPage({
     }
   }
 
-  // Reveal exact location only if reservation is accepted
-  const locationRevealed = userReservation?.status === 'accepted'
+  // Reveal exact location only after host acceptance writes locationRevealedAt
+  const locationRevealed = Boolean(userReservation?.locationRevealedAt)
 
   // events stores custom coordinates/address in jsonb 'customLocation'
   // Extract customAddress for the client component
@@ -88,6 +88,7 @@ export default async function EventDetailPage({
       locationRevealed={locationRevealed}
       isVip={currentUser?.isVip ?? false}
       isLoggedIn={!!currentUser}
+      isCreator={event.creatorId === (currentUser?.id ?? -1)}
       locale={params.locale}
     />
   )

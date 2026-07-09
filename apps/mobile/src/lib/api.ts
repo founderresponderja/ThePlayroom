@@ -5,13 +5,15 @@ export async function apiFetch<T>(
   token: string | null,
   options: RequestInit = {},
 ): Promise<T> {
+  const headers = new Headers(options.headers)
+  headers.set('Content-Type', 'application/json')
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
+    headers,
   })
 
   if (!res.ok) {

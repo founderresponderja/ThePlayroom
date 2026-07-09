@@ -1,15 +1,82 @@
-import { pgTable, serial, text, timestamp, varchar, boolean, jsonb, integer } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  serial,
+  text,
+  timestamp,
+  varchar,
+} from 'drizzle-orm/pg-core';
+
+export const accountTypeEnum = pgEnum('account_type', [
+  'FEMALE_SINGLE',
+  'MALE_SINGLE',
+  'COUPLE_MF',
+  'COUPLE_MM',
+  'COUPLE_FF',
+  'SWING_CLUB',
+  'SEX_SHOP',
+]);
+
+export const verificationLevelEnum = pgEnum('verification_level', [
+  'none',
+  'photo',
+  'video',
+  'social',
+]);
+
+export const subscriptionTierEnum = pgEnum('subscription_tier', [
+  'free',
+  'vip',
+]);
+
+export const reservationStatusEnum = pgEnum('reservation_status', [
+  'requested',
+  'accepted',
+  'declined',
+  'waitlist',
+]);
+
+export const moderationStatusEnum = pgEnum('moderation_status', [
+  'pending',
+  'approved',
+  'rejected',
+]);
+
+export const csamScanStatusEnum = pgEnum('csam_scan_status', [
+  'pending',
+  'clean',
+  'flagged',
+  'error',
+]);
+
+export const orderStatusEnum = pgEnum('order_status', [
+  'pending',
+  'paid',
+  'shipped',
+  'delivered',
+  'refunded',
+  'cancelled',
+]);
+
+export const pushPlatformEnum = pgEnum('push_platform', [
+  'web',
+  'expo',
+]);
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  clerkUserId: varchar('clerk_user_id', { length: 191 }).notNull(),
-  accountType: varchar('account_type', { length: 32 }).notNull(),
+  clerkUserId: varchar('clerk_user_id', { length: 191 }).notNull().unique(),
+  accountType: accountTypeEnum('account_type').notNull(),
   displayName: varchar('display_name', { length: 100 }).notNull(),
   dateOfBirth: timestamp('date_of_birth', { mode: 'date' }),
   ageVerifiedAt: timestamp('age_verified_at', { mode: 'date' }),
-  verificationLevel: varchar('verification_level', { length: 32 }).notNull().default('none'),
+  verificationLevel: verificationLevelEnum('verification_level').notNull().default('none'),
   onboardingComplete: boolean('onboarding_complete').notNull().default(false),
-  subscriptionTier: varchar('subscription_tier', { length: 64 }),
+  subscriptionTier: subscriptionTierEnum('subscription_tier').default('free'),
   isVip: boolean('is_vip').notNull().default(false),
   publicKey: text('public_key'),                        // NaCl public key for E2E sealed boxes
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
@@ -36,8 +103,8 @@ export const photos = pgTable('photos', {
   url: text('url').notNull(),
   isPrivate: boolean('is_private').notNull().default(false),
   isPrimary: boolean('is_primary').notNull().default(false),
-  moderationStatus: varchar('moderation_status', { length: 32 }).notNull().default('pending'),
-  csamScanStatus: varchar('csam_scan_status', { length: 32 }).notNull().default('pending'),
+  moderationStatus: moderationStatusEnum('moderation_status').notNull().default('pending'),
+  csamScanStatus: csamScanStatusEnum('csam_scan_status').notNull().default('pending'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 
@@ -95,7 +162,7 @@ export const reservations = pgTable('reservations', {
   id: serial('id').primaryKey(),
   eventId: integer('event_id').notNull().references(() => events.id),
   userId: integer('user_id').notNull().references(() => users.id),
-  status: varchar('status', { length: 32 }).notNull().default('requested'),
+  status: reservationStatusEnum('status').notNull().default('requested'),
   priorityScore: integer('priority_score').notNull().default(0),
   paymentIntentId: varchar('payment_intent_id', { length: 191 }),
   locationRevealedAt: timestamp('location_revealed_at', { mode: 'string' })
@@ -140,14 +207,17 @@ export const entitlements = pgTable('entitlements', {
   feature: varchar('feature', { length: 128 }).notNull(),
   active: boolean('active').notNull().default(false),
   source: varchar('source', { length: 128 }).notNull().default('stripe')
-});
+}, (table) => ({
+  pk: primaryKey({ columns: [table.userId, table.feature] }),
+}));
 
 export const pushSubscriptions = pgTable('push_subscriptions', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').notNull().references(() => users.id),
+  platform: pushPlatformEnum('platform').notNull().default('web'),
   endpoint: text('endpoint').notNull().unique(),
-  p256dh: text('p256dh').notNull(),
-  auth: text('auth').notNull(),
+  p256dh: text('p256dh'),
+  auth: text('auth'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 
@@ -174,14 +244,14 @@ export const products = pgTable('products', {
   category: varchar('category', { length: 128 }).notNull(),
   stock: integer('stock').notNull().default(0),
   ageRestricted: boolean('age_restricted').notNull().default(true),
-  moderationStatus: varchar('moderation_status', { length: 32 }).notNull().default('pending'),
+  moderationStatus: moderationStatusEnum('moderation_status').notNull().default('pending'),
   active: boolean('active').notNull().default(true)
 });
 
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   buyerUserId: integer('buyer_user_id').notNull().references(() => users.id),
-  status: varchar('status', { length: 32 }).notNull().default('pending'),
+  status: orderStatusEnum('status').notNull().default('pending'),
   paymentIntentId: varchar('payment_intent_id', { length: 191 }),
   totalCents: integer('total_cents').notNull().default(0),
   platformFeeCents: integer('platform_fee_cents').notNull().default(0),

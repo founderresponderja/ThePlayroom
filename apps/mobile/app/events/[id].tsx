@@ -39,8 +39,9 @@ export default function EventDetailScreen() {
       const token = await getToken()
       const eventData = await apiFetch<Event>(`/api/events/${id}`, token)
       setEvent(eventData)
-    } catch {
-      // ignore event loading errors for MVP
+    } catch (error) {
+      console.error('[mobile] failed to load event detail', error)
+      setError('Erro ao carregar evento')
     }
     setLoading(false)
   }, [getToken, id])

@@ -1,9 +1,9 @@
-import { auth } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
-import { db, users, profiles, photos, matches, quizResults, eq, and, ne, notInArray, isNotNull, sql, gte, desc } from '@playroom/db'
+import { NextRequest, NextResponse } from 'next/server'
+import { db, users, profiles, photos, matches, quizResults, moderationStatusEnum, eq, and, ne, notInArray, isNotNull, sql, gte, desc } from '@playroom/db'
+import { getValidClerkSession } from '@/lib/auth'
 
-export async function GET() {
-  const { userId } = await auth()
+export async function GET(req: NextRequest) {
+  const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const currentUser = await db.query.users.findFirst({
@@ -76,12 +76,14 @@ export async function GET() {
           eq(photos.userId, candidate.id),
           eq(photos.isPrimary, true),
           eq(photos.isPrivate, false),
+          eq(photos.moderationStatus, moderationStatusEnum.enumValues[1]),
         ),
       })
       const allPublicPhotos = await db.query.photos.findMany({
         where: and(
           eq(photos.userId, candidate.id),
           eq(photos.isPrivate, false),
+          eq(photos.moderationStatus, moderationStatusEnum.enumValues[1]),
         ),
       })
       return {

@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router'
+import { type ColorValue, Text } from 'react-native'
 import { colors } from '../../src/constants/theme'
 
 export default function TabsLayout() {
@@ -38,7 +39,6 @@ export default function TabsLayout() {
   )
 }
 
-function TabIcon({ emoji, color }: { emoji: string; color: string }) {
-  const { Text } = require('react-native')
+function TabIcon({ emoji, color }: { emoji: string; color: ColorValue }) {
   return <Text style={{ fontSize: 20, opacity: color === colors.primary ? 1 : 0.5 }}>{emoji}</Text>
 }

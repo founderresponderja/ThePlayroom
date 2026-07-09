@@ -60,12 +60,18 @@ export async function reportCSAM(
   uploaderUserId: string,
   reason: string,
 ): Promise<void> {
-  console.error('[CSAM REPORT]', {
-    timestamp: new Date().toISOString(),
-    imageKey,
-    uploaderUserId,
+  const timestamp = new Date().toISOString()
+  const incident = {
+    type: 'CSAM_DETECTED',
+    userId: uploaderUserId,
+    photoKey: imageKey,
+    timestamp,
     reason,
-    reportEndpoint: process.env.CSAM_REPORT_ENDPOINT ?? 'NOT_CONFIGURED',
+  }
+
+  console.error('[CSAM REPORT]', {
+    ...incident,
+    reportEndpoint: 'DISABLED',
   })
 
   // TODO: Before public launch, integrate with:
@@ -73,18 +79,5 @@ export async function reportCSAM(
   // 2. IWF (Internet Watch Foundation) API (UK/EU)
   // 3. INHOPE member organisation for Portugal
 
-  const makeWebhook = process.env.MAKE_OPS_WEBHOOK_URL
-  if (makeWebhook) {
-    await fetch(makeWebhook, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'CSAM_DETECTED',
-        imageKey,
-        uploaderUserId,
-        reason,
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(console.error)
-  }
+  console.warn('[CSAM] External ops webhook integration disabled; incident kept in server logs only.')
 }

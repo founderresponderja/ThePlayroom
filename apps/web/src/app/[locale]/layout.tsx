@@ -1,8 +1,17 @@
 import type { ReactNode } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
 import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
+import { redirect } from 'next/navigation'
 import { Navbar } from '../../components/Navbar'
 import { AgeGate } from '../../components/AgeGate'
+
+const supportedLocales = ['pt', 'en', 'es'] as const
+type SupportedLocale = (typeof supportedLocales)[number]
+
+function isSupportedLocale(locale: string): locale is SupportedLocale {
+  return (supportedLocales as readonly string[]).includes(locale)
+}
 
 export const metadata = {
   title: 'The Playroom',
@@ -25,15 +34,20 @@ interface LocaleLayoutProps {
 }
 
 export default async function LocaleLayout({ children, params }: LocaleLayoutProps) {
-  const messages = (await import(`../../../messages/${params.locale}.json`)).default
+  if (!isSupportedLocale(params.locale)) {
+    redirect('/pt')
+  }
+
+  const locale = await getLocale()
+  const messages = await getMessages()
 
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      signInUrl={`/${params.locale}/sign-in`}
-      signUpUrl={`/${params.locale}/sign-up`}
+      signInUrl={`/${locale}/sign-in`}
+      signUpUrl={`/${locale}/sign-up`}
     >
-      <NextIntlClientProvider locale={params.locale} messages={messages}>
+      <NextIntlClientProvider locale={locale} messages={messages}>
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -45,7 +59,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
           `,
           }}
         />
-        <Navbar locale={params.locale} />
+        <Navbar locale={locale} />
         <main>{children}</main>
         <AgeGate />
       </NextIntlClientProvider>

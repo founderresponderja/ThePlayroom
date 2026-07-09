@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { headers } from 'next/headers'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -8,8 +9,10 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const locale = headers().get('x-next-intl-locale') ?? 'pt'
+
   return (
-    <html lang="pt" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   )

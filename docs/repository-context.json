@@ -1,0 +1,598 @@
+{
+  "generatedAt": "2026-07-07",
+  "project": {
+    "name": "The Playroom",
+    "repository": "founderresponderja/ThePlayroom",
+    "type": "Turborepo monorepo",
+    "primaryLanguage": "TypeScript",
+    "summary": "Adults-only, privacy-first CNM/lifestyle platform combining social discovery, compatibility matching, encrypted messaging, events/clubs, and a curated marketplace for sex shops.",
+    "productAxes": [
+      "Profiles and social discovery for singles, couples, clubs, and shops",
+      "Matching based on kink-test-derived tags, limits, and compatibility scoring",
+      "Events and clubs with reservations, VIP priority, and delayed location reveal",
+      "Curated marketplace for sex shops with Stripe Connect onboarding and moderated catalog"
+    ],
+    "accountTypes": [
+      "FEMALE_SINGLE",
+      "MALE_SINGLE",
+      "COUPLE_MF",
+      "COUPLE_MM",
+      "COUPLE_FF",
+      "SWING_CLUB",
+      "SEX_SHOP"
+    ]
+  },
+  "sourceDocuments": [
+    "docs/repository-context.md",
+    "docs/repository-context-long.md",
+    "README.md",
+    "docs/decisions/0001-monorepo-architecture.md",
+    "docs/decisions/0002-stack-selection.md"
+  ],
+  "domain": {
+    "coreBusinessLogic": {
+      "onboarding": {
+        "steps": [
+          "Account type selection",
+          "Date of birth collection and 18+ gate",
+          "Display name collection",
+          "Approximate location permission"
+        ],
+        "redirectsByAccountType": {
+          "socialProfiles": "/{locale}/kink-test",
+          "SWING_CLUB": "/{locale}/club-setup",
+          "SEX_SHOP": "/{locale}/shop-setup"
+        },
+        "currentGap": "The UI sends accountType, ageVerifiedAt, onboardingComplete, and dateOfBirth to PATCH /api/users/me, but the current handler only updates display_name."
+      },
+      "matching": {
+        "dataSource": "quizResults.derivedTags",
+        "tagSemantics": {
+          "positive": "Normal interest/affinity tags",
+          "hardLimit": "Tags prefixed with no:",
+          "softInterest": "Tags prefixed with curious:"
+        },
+        "algorithm": "Simplified Jaccard-style similarity over positive tags after eliminating hard-limit incompatibilities",
+        "freeTierBehavior": "Randomized feed with daily match cap",
+        "vipBehavior": "Compatibility-ranked feed and compatibility endpoint access"
+      },
+      "messaging": {
+        "model": "Server stores encrypted payloads only",
+        "crypto": "libsodium sealed boxes",
+        "keyManagement": {
+          "publicKey": "Stored in users.publicKey",
+          "privateKey": "Stored client-side in localStorage"
+        },
+        "delivery": "Persist to DB via /api/messages and broadcast realtime events via Ably"
+      },
+      "eventsAndClubs": {
+        "clubs": "Persistent venue/community entities",
+        "events": "Time-bound entities with privacy, capacity, ticketing, and delayed location reveal",
+        "reservationLogic": [
+          "Requested/accepted/declined/waitlist lifecycle",
+          "VIP priority score",
+          "Host-accepted reveal of location via locationRevealedAt"
+        ]
+      },
+      "marketplace": {
+        "sellerType": "SEX_SHOP accounts",
+        "capabilities": [
+          "Stripe Connect onboarding",
+          "Moderated product catalog",
+          "Orders and order items",
+          "Platform fee split via Stripe payment intents or checkout sessions"
+        ]
+      },
+      "trustAndSafety": {
+        "features": [
+          "Age gate",
+          "Verification workflows",
+          "Photo moderation",
+          "Reports",
+          "Audit logs",
+          "CSAM scanning placeholder"
+        ],
+        "csamCurrentState": "Fail-safe placeholder; blocks uploads in production if scanner is not configured."
+      }
+    }
+  },
+  "techStack": {
+    "root": {
+      "packageManager": "pnpm@8.11.0",
+      "orchestration": "Turborepo",
+      "language": "TypeScript",
+      "linting": "ESLint",
+      "formatting": "Prettier",
+      "testing": "Vitest",
+      "ciCd": "GitHub Actions"
+    },
+    "frontend": {
+      "web": {
+        "framework": "Next.js 14.2.5 App Router",
+        "ui": ["React 18.3.1", "Tailwind CSS"],
+        "i18n": "next-intl",
+        "auth": "@clerk/nextjs",
+        "billing": ["stripe", "@stripe/stripe-js"],
+        "realtime": "ably",
+        "crypto": "libsodium-wrappers",
+        "push": "web-push",
+        "maps": "@googlemaps/js-api-loader",
+        "storage": ["@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner"]
+      },
+      "mobile": {
+        "framework": "Expo managed workflow",
+        "router": "expo-router",
+        "ui": "React Native 0.71.x",
+        "auth": "@clerk/expo",
+        "deviceStorage": "expo-secure-store",
+        "notifications": "expo-notifications"
+      },
+      "admin": {
+        "framework": "Next.js 14.2.5",
+        "state": "Placeholder dashboard shell"
+      }
+    },
+    "backend": {
+      "runtime": "Node.js",
+      "apiService": "Express stub",
+      "realtimeService": "ws stub",
+      "workers": "Node.js worker stub",
+      "database": "Postgres (architecturally intended for Neon)",
+      "orm": "Drizzle ORM",
+      "migrations": "drizzle-kit",
+      "driver": "postgres",
+      "validation": "zod"
+    },
+    "externalIntegrations": [
+      "Clerk",
+      "Stripe Billing",
+      "Stripe Connect",
+      "Ably",
+      "Google Maps",
+      "S3/R2 compatible object storage",
+      "Svix",
+      "Make.com webhooks"
+    ]
+  },
+  "architecture": {
+    "actualShape": "Modular monolith centered in apps/web, inside a monorepo with future-facing service boundaries.",
+    "responsibilitySplit": {
+      "apps": "User-facing frontends and current BFF implementation",
+      "packages": "Shared libraries for DB, UI tokens, config, and minimal core typing",
+      "services": "Intended future backend separation, currently mostly stubs",
+      "docs": "ADRs and legal placeholders"
+    },
+    "dominantPatterns": [
+      "Backend-for-Frontend in Next.js App Router",
+      "Monorepo modularization by platform and shared package",
+      "Feature gating via VIP flags and entitlements table",
+      "Webhook-driven billing and auth synchronization",
+      "Client-side cryptography for private messaging",
+      "Route-based modularity over formal MVC/Clean Architecture layers"
+    ],
+    "notClearlyPresent": [
+      "Formal Clean Architecture",
+      "Strong DDD tactical modeling in packages/core",
+      "Mature event-driven backend",
+      "Production-grade separated microservices"
+    ],
+    "criticalStructuralTension": {
+      "name": "Dual DB schema divergence",
+      "details": {
+        "runtimeSchema": "packages/db/src/schema.ts",
+        "migrationSchema": "packages/db/src/schema/index.ts",
+        "migrationConfig": "packages/db/drizzle.config.ts",
+        "divergences": [
+          "serial/integer identifiers vs uuid identifiers",
+          "different location field modeling",
+          "different enum usage",
+          "different timestamps and table surfaces"
+        ]
+      },
+      "impact": "Potential drift between runtime typing/queries and generated migrations."
+    }
+  },
+  "repositoryStructure": {
+    "root": {
+      "apps": {
+        "admin": "Next.js admin dashboard, mostly placeholder",
+        "mobile": "Expo app with auth guard and placeholder tabs/routes",
+        "web": "Primary implemented surface: UI, API routes, webhooks, and most business logic"
+      },
+      "docs": {
+        "decisions": "Architecture and stack ADRs",
+        "legal": "Placeholder legal documents"
+      },
+      "packages": {
+        "config": "Env schema and shared configuration",
+        "core": "Minimal shared domain package; currently mostly AccountType",
+        "db": "Drizzle bootstrap and schema definitions",
+        "ui": "Shared theme and token definitions"
+      },
+      "services": {
+        "api": "Express health endpoint stub",
+        "realtime": "WebSocket echo stub",
+        "workers": "Worker startup stub"
+      }
+    }
+  },
+  "criticalComponents": {
+    "webShell": [
+      "apps/web/src/app/[locale]/layout.tsx",
+      "apps/web/src/app/[locale]/page.tsx",
+      "apps/web/middleware.ts"
+    ],
+    "coreBusinessLogic": [
+      "apps/web/src/app/api/feed/route.ts",
+      "apps/web/src/app/api/feed/action/route.ts",
+      "apps/web/src/lib/matching.ts",
+      "apps/web/src/lib/entitlements.ts",
+      "apps/web/src/lib/crypto.ts",
+      "apps/web/src/lib/csam.ts",
+      "apps/web/src/app/api/messages/route.ts",
+      "apps/web/src/app/api/webhooks/stripe/route.ts",
+      "apps/web/src/app/api/webhooks/clerk/route.ts"
+    ],
+    "dataLayer": [
+      "packages/db/src/index.ts",
+      "packages/db/src/schema.ts",
+      "packages/db/src/schema/index.ts"
+    ],
+    "mobile": [
+      "apps/mobile/app/_layout.tsx",
+      "apps/mobile/src/lib/api.ts"
+    ],
+    "futureServiceBoundaries": [
+      "services/api/src/index.ts",
+      "services/realtime/src/index.ts",
+      "services/workers/src/index.ts"
+    ]
+  },
+  "conventions": {
+    "typescript": {
+      "strictMode": true,
+      "flags": [
+        "strict",
+        "noUncheckedIndexedAccess",
+        "noImplicitAny",
+        "noImplicitReturns",
+        "noFallthroughCasesInSwitch"
+      ]
+    },
+    "style": {
+      "indentation": "2 spaces",
+      "quotes": "single",
+      "trailingComma": "all",
+      "semicolons": true,
+      "printWidth": 100
+    },
+    "eslint": {
+      "explicitFunctionReturnType": true,
+      "noExplicitAny": true,
+      "noUnusedVars": true,
+      "consolePolicy": "warn, with allowlist for warn and error"
+    },
+    "naming": {
+      "accountTypes": "SCREAMING_SNAKE_CASE",
+      "features": "snake_case",
+      "sqlColumns": "snake_case",
+      "reactComponents": "PascalCase"
+    },
+    "i18n": {
+      "locales": ["pt", "en", "es"],
+      "defaultLocale": "pt",
+      "localePrefix": "always"
+    },
+    "designSystem": {
+      "themeBias": "dark-first",
+      "palette": ["near-black", "vivid red", "fuchsia", "soft light variant"],
+      "tokenSource": "packages/ui/src/tokens.ts"
+    }
+  },
+  "buildAndOperations": {
+    "rootScripts": {
+      "dev": "turbo run dev",
+      "build": "turbo run build",
+      "lint": "turbo run lint",
+      "typecheck": "turbo run typecheck",
+      "test": "turbo run test",
+      "format": "prettier --write ."
+    },
+    "workspaceScripts": {
+      "web": ["next dev --port 3000", "next build", "next lint", "tsc --noEmit"],
+      "mobile": ["expo start", "eas build --platform all --non-interactive"],
+      "db": ["db:generate", "db:migrate", "db:push", "db:studio"]
+    },
+    "ci": {
+      "workflow": ".github/workflows/ci.yml",
+      "steps": ["pnpm install", "pnpm lint", "pnpm typecheck", "pnpm test"]
+    },
+    "deploy": {
+      "workflow": ".github/workflows/deploy.yml",
+      "steps": ["pnpm install", "pnpm build", "Deploy to Vercel", "EAS build for mobile"]
+    }
+  },
+  "testing": {
+    "observedCoverage": "Minimal",
+    "existingTests": [
+      {
+        "path": "packages/core/src/__tests__/accountType.test.ts",
+        "purpose": "Validates AccountType zod enum parsing"
+      }
+    ],
+    "notablyMissing": [
+      "Feed ranking behavior tests",
+      "Billing/webhook tests",
+      "Messaging encryption flow tests",
+      "Reservation and event workflow tests",
+      "Photo moderation and CSAM flow tests"
+    ]
+  },
+  "apiSurface": {
+    "notes": [
+      "Most authenticated routes resolve Clerk session first, then lookup internal user via users.clerkUserId.",
+      "There is a mix of Drizzle query builder usage and raw SQL via (db as any).execute(sql...).",
+      "apps/web is the effective API layer of the system."
+    ],
+    "categories": {
+      "feedAndMatching": [
+        "GET /api/feed",
+        "POST /api/feed/action",
+        "GET /api/matches",
+        "GET /api/compatibility/[userId]"
+      ],
+      "messagingAndRealtime": [
+        "POST /api/threads",
+        "GET /api/messages",
+        "POST /api/messages",
+        "GET /api/ably-token",
+        "GET /api/keypair",
+        "POST /api/keypair"
+      ],
+      "userProfileOnboarding": [
+        "GET /api/users/me",
+        "PATCH /api/users/me",
+        "PATCH /api/profile",
+        "POST /api/quiz"
+      ],
+      "photosAndVerification": [
+        "GET /api/photos",
+        "POST /api/photos",
+        "DELETE /api/photos",
+        "PATCH /api/photos/[id]",
+        "POST /api/photos/upload-url",
+        "POST /api/photos/confirm",
+        "GET /api/verifications",
+        "POST /api/verifications",
+        "POST /api/verifications/photo-upload"
+      ],
+      "eventsAndClubs": [
+        "GET /api/events",
+        "POST /api/events",
+        "GET /api/events/[id]",
+        "GET /api/clubs",
+        "POST /api/clubs",
+        "GET /api/clubs/[id]",
+        "GET /api/reservations",
+        "POST /api/reservations",
+        "POST /api/reservations/[id]/accept"
+      ],
+      "billingAndMarketplace": [
+        "GET /api/subscription",
+        "POST /api/stripe/checkout",
+        "POST /api/stripe/portal",
+        "GET /api/products",
+        "POST /api/products",
+        "GET /api/products/[id]",
+        "PATCH /api/products/[id]",
+        "DELETE /api/products/[id]",
+        "GET /api/orders",
+        "POST /api/orders",
+        "POST /api/orders/checkout-session",
+        "POST /api/connect/onboard",
+        "GET /api/connect/status",
+        "POST /api/connect/dashboard"
+      ],
+      "pushAndNotifications": [
+        "POST /api/push/subscribe",
+        "DELETE /api/push/subscribe"
+      ],
+      "adminAndModeration": [
+        "GET /api/admin/verifications",
+        "PATCH /api/admin/verifications/[id]",
+        "PATCH /api/admin/photos/[id]",
+        "GET /api/admin/csam",
+        "PATCH /api/admin/reports/[id]",
+        "POST /api/admin/reports/[id]/ban",
+        "PATCH /api/admin/users/[id]"
+      ],
+      "webhooks": [
+        "POST /api/webhooks/clerk",
+        "POST /api/webhooks/stripe"
+      ]
+    }
+  },
+  "endToEndFlows": [
+    {
+      "name": "Onboarding and initial activation",
+      "uiEntry": "/{locale}/onboarding",
+      "majorSteps": [
+        "User selects account type, age, display name, and optional approximate location",
+        "Client sends PATCH /api/users/me",
+        "Client redirects to kink test, club setup, or shop setup"
+      ],
+      "backendReality": "PATCH /api/users/me currently only updates display_name, leaving onboardingComplete/accountType/dateOfBirth persistence incomplete.",
+      "tables": ["users"],
+      "risks": ["UI intent and backend persistence diverge"]
+    },
+    {
+      "name": "Kink test to compatibility-ranked feed",
+      "uiEntry": "/{locale}/kink-test and /{locale}/feed",
+      "majorSteps": [
+        "Client posts quiz answers to /api/quiz",
+        "Backend derives tags and archetype and inserts quizResults",
+        "Feed loads candidates via /api/feed",
+        "VIP users receive ranking through rankCandidates()"
+      ],
+      "tables": ["quiz_results", "matches", "users", "profiles", "photos"],
+      "businessRules": [
+        "Free users have daily match cap",
+        "VIP users get compatibility-ranked candidates",
+        "Hard-limit incompatibilities exclude candidates"
+      ]
+    },
+    {
+      "name": "Mutual match to encrypted messaging",
+      "uiEntry": "/{locale}/matches and /{locale}/messages/{userId}",
+      "majorSteps": [
+        "Client loads mutual matches via /api/matches",
+        "Thread is created or resolved via /api/threads",
+        "Messages are loaded from /api/messages",
+        "Outgoing plaintext is encrypted client-side and persisted via /api/messages",
+        "Realtime delivery happens over Ably"
+      ],
+      "tables": ["matches", "threads", "messages", "users"],
+      "externalDependencies": ["Ably", "libsodium"],
+      "securityModel": "Server stores ciphertext; private key remains client-side."
+    },
+    {
+      "name": "Verification workflow",
+      "uiEntry": "/{locale}/verification",
+      "majorSteps": [
+        "Client gets upload URL from /api/verifications/photo-upload",
+        "Client uploads evidence directly to storage",
+        "Client creates pending verification via /api/verifications",
+        "Admin reviews via /api/admin/verifications and PATCH /api/admin/verifications/[id]"
+      ],
+      "tables": ["verifications", "users"],
+      "outcome": "Approved verifications update users.verificationLevel."
+    },
+    {
+      "name": "Photos to moderation and CSAM screening",
+      "uiEntry": "Profile editing/photo upload",
+      "majorSteps": [
+        "Client may persist via /api/photos or confirm through /api/photos/confirm",
+        "Confirmed flow fetches uploaded object and runs scanImageForCSAM()",
+        "Unsafe objects are deleted and reported",
+        "Human moderation later updates moderationStatus via admin routes"
+      ],
+      "tables": ["photos"],
+      "risks": [
+        "Two parallel persistence flows exist",
+        "Admin rejection path may pass a URL instead of object key to storage delete helper"
+      ]
+    },
+    {
+      "name": "Events and delayed location reveal",
+      "uiEntry": "/{locale}/events",
+      "majorSteps": [
+        "Host creates event via /api/events",
+        "Public readers load event detail from /api/events/[id] with customLocation nulled",
+        "Attendees reserve via /api/reservations",
+        "Host accepts via /api/reservations/[id]/accept, which sets locationRevealedAt and notifies user"
+      ],
+      "tables": ["events", "clubs", "reservations"],
+      "businessRules": [
+        "Capacity can move users to waitlist",
+        "VIP users get higher reservation priority",
+        "Exact location is hidden before acceptance"
+      ]
+    },
+    {
+      "name": "Seller onboarding to checkout",
+      "uiEntry": "/{locale}/shop-setup and storefront routes",
+      "majorSteps": [
+        "Seller starts Stripe Connect via /api/connect/onboard",
+        "Seller status is synced through /api/connect/status",
+        "Seller creates moderated products via /api/products",
+        "Buyer creates order via /api/orders",
+        "Buyer is redirected to Stripe Checkout through /api/orders/checkout-session",
+        "Stripe webhook marks order as paid"
+      ],
+      "tables": ["shops", "products", "orders", "order_items"],
+      "externalDependencies": ["Stripe", "Stripe Connect"],
+      "businessRules": [
+        "Only SEX_SHOP accounts can create products",
+        "Shop payoutsEnabled is required before listing products",
+        "Platform fee is derived from MARKETPLACE_DEFAULT_COMMISSION_BPS"
+      ]
+    },
+    {
+      "name": "VIP upgrade to entitlements",
+      "uiEntry": "/{locale}/pricing",
+      "majorSteps": [
+        "Client starts Stripe subscription checkout via /api/stripe/checkout",
+        "Stripe checkout and subscription webhooks update subscriptions",
+        "users.isVip and subscriptionTier are updated",
+        "VIP entitlements are activated or deactivated"
+      ],
+      "tables": ["subscriptions", "users", "entitlements"],
+      "outcome": "Unlocks compatibility ranking and removes daily usage limits in product logic."
+    }
+  ],
+  "environment": {
+    "centralSchema": "packages/config/src/env.ts",
+    "declaredVariables": [
+      "NODE_ENV",
+      "DATABASE_URL",
+      "CLERK_FRONTEND_API",
+      "CLERK_API_KEY",
+      "CLERK_JWT_KEY",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "STRIPE_CONNECT_CLIENT_ID",
+      "GOOGLE_MAPS_API_KEY",
+      "EXPO_PUSH_KEY",
+      "MAKE_WEBHOOK_URL",
+      "JWT_SECRET",
+      "NEXTAUTH_URL"
+    ],
+    "observedAdditionalVariables": [
+      "CSAM_SCANNER_API_KEY",
+      "CSAM_REPORT_ENDPOINT",
+      "MAKE_OPS_WEBHOOK_URL",
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "NEXT_PUBLIC_APP_URL",
+      "ABLY_API_KEY",
+      "NEXT_PUBLIC_MEDIA_CDN_URL",
+      "MARKETPLACE_DEFAULT_COMMISSION_BPS"
+    ],
+    "note": "The central env schema does not fully enumerate all environment variables actually used throughout the codebase."
+  },
+  "maturityAndRisks": {
+    "strengths": [
+      "Clear product vision and domain boundaries",
+      "Consistent monorepo layout",
+      "Strong privacy and trust-and-safety intent",
+      "Billing, storage, push, auth, and webhook integrations already modeled"
+    ],
+    "materialGaps": [
+      "apps/web still concentrates most backend responsibilities",
+      "Dual DB schemas create migration/runtime drift risk",
+      "Mobile/admin/services lag far behind the web app",
+      "Clerk webhook validates signatures but does not sync users",
+      "CSAM integration is still placeholder",
+      "Shared core package is underused"
+    ],
+    "practicalInterpretation": "Treat apps/web as the current source of operational truth. Be careful with data model assumptions because the runtime schema and migration schema diverge."
+  },
+  "recommendedEntryFiles": [
+    "README.md",
+    "docs/decisions/0001-monorepo-architecture.md",
+    "docs/decisions/0002-stack-selection.md",
+    "apps/web/src/app/[locale]/layout.tsx",
+    "apps/web/src/app/[locale]/page.tsx",
+    "apps/web/src/app/api/feed/route.ts",
+    "apps/web/src/app/api/feed/action/route.ts",
+    "apps/web/src/app/api/messages/route.ts",
+    "apps/web/src/app/api/webhooks/stripe/route.ts",
+    "apps/web/src/lib/matching.ts",
+    "apps/web/src/lib/entitlements.ts",
+    "apps/web/src/lib/crypto.ts",
+    "apps/web/src/lib/csam.ts",
+    "packages/db/src/index.ts",
+    "packages/db/src/schema.ts",
+    "packages/db/src/schema/index.ts"
+  ]
+}

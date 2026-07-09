@@ -1,9 +1,9 @@
-import { auth } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
-import { db, users, matches, photos, eq, and, or } from '@playroom/db'
+import { NextRequest, NextResponse } from 'next/server'
+import { db, users, matches, photos, moderationStatusEnum, eq, and, or } from '@playroom/db'
+import { getValidClerkSession } from '@/lib/auth'
 
-export async function GET() {
-  const { userId } = await auth()
+export async function GET(req: NextRequest) {
+  const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const currentUser = await db.query.users.findFirst({
@@ -34,6 +34,7 @@ export async function GET() {
           eq(photos.userId, otherUserId),
           eq(photos.isPrimary, true),
           eq(photos.isPrivate, false),
+          eq(photos.moderationStatus, moderationStatusEnum.enumValues[1]),
         ),
       })
 
@@ -45,6 +46,7 @@ export async function GET() {
           displayName: otherUser?.displayName ?? null,
           accountType: otherUser?.accountType ?? null,
           verificationLevel: otherUser?.verificationLevel ?? null,
+          publicKey: otherUser?.publicKey ?? null,
           primaryPhoto: primaryPhoto?.url ?? null,
         },
       }

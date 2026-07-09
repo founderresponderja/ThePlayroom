@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { db, users, threads, photos, eq, and, or } from '@playroom/db'
+import { db, users, threads, photos, moderationStatusEnum, eq, and, or } from '@playroom/db'
 import ConversationsList from './ConversationsList'
 
 export default async function MessagesPage({ params }: { params: { locale: string } }) {
@@ -35,6 +35,7 @@ export default async function MessagesPage({ params }: { params: { locale: strin
           eq(photos.userId, otherUserId),
           eq(photos.isPrimary, true),
           eq(photos.isPrivate, false),
+          eq(photos.moderationStatus, moderationStatusEnum.enumValues[1]),
         ),
       })
 

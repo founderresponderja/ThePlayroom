@@ -2,18 +2,38 @@ import { NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/admin'
 import { db } from '@playroom/db'
 import { sql } from 'drizzle-orm'
+import { z } from 'zod'
+
+const patchVerificationSchema = z.object({
+  status: z.enum(['approved', 'rejected']),
+})
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const admin = await isAdmin()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { status } = await req.json() as { status: 'approved' | 'rejected' }
+  const verificationId = Number(params.id)
+  if (!Number.isInteger(verificationId) || verificationId <= 0) {
+    return NextResponse.json({ error: 'Invalid verification id' }, { status: 400 })
+  }
 
-  if (!['approved', 'rejected'].includes(status)) {
+  const parsed = patchVerificationSchema.safeParse(await req.json())
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
-  const verificationId = Number(params.id)
+  const { status } = parsed.data
+
+  const existing = await (db as any).execute(sql`
+    select id, user_id as "userId", type
+    from verifications
+    where id = ${verificationId}
+    limit 1
+  `)
+
+  const current = existing?.[0] as { id: number; userId?: number | null; type?: string } | undefined
+  if (!current) return NextResponse.json({ error: 'Verification not found' }, { status: 404 })
+
   const [updated] = await (db as any).execute(sql`
     update verifications
     set status = ${status}, reviewed_at = now()
@@ -22,18 +42,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   `)
 
   if (status === 'approved' && updated) {
-    const verification = await (db as any).execute(sql`select type, user_id as "userId" from verifications where id = ${verificationId} limit 1`)
-    const row = verification?.[0] as { type?: string; userId?: number } | undefined
-    if (row?.userId) {
-      const levelMap: Record<string, string> = {
-        photo: 'photo',
-        video: 'video',
-        social: 'social',
-      }
+    const levelMap: Record<string, 'photo' | 'video' | 'social'> = {
+      photo: 'photo',
+      video: 'video',
+      social: 'social',
+    }
+    const newLevel = levelMap[current.type ?? '']
+
+    if (current.userId && newLevel) {
       await (db as any).execute(sql`
         update users
-        set verification_level = ${levelMap[row.type ?? ''] ?? 'none'}, updated_at = now()
-        where id = ${row.userId}
+        set verification_level = ${newLevel}, updated_at = now()
+        where id = ${current.userId}
       `)
     }
   }

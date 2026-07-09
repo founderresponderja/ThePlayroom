@@ -41,7 +41,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Shop not connected' }, { status: 400 })
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://theplayroom.pt'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!baseUrl) {
+    console.error('[orders/checkout-session] Missing NEXT_PUBLIC_APP_URL')
+    return NextResponse.json({ error: 'Server misconfiguration: NEXT_PUBLIC_APP_URL' }, { status: 500 })
+  }
   const feeCents = Math.round((order.totalCents * PLATFORM_FEE_BPS) / 10000)
 
   const session = await stripe.checkout.sessions.create({

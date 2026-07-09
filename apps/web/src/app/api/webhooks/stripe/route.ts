@@ -1,6 +1,6 @@
 import Stripe from 'stripe'
 import { headers } from 'next/headers'
-import { db, subscriptions, users, entitlements, orders, eq } from '@playroom/db'
+import { db, subscriptions, users, entitlements, orders, eq, orderStatusEnum } from '@playroom/db'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       const orderId = session.metadata?.orderId
       if (orderId) {
         await db.update(orders)
-          .set({ status: 'paid' })
+          .set({ status: orderStatusEnum.enumValues[1] })
           .where(eq(orders.id, Number(orderId)))
       }
   }

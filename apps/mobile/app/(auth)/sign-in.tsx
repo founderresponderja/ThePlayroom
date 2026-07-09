@@ -1,4 +1,4 @@
-import { useSignIn } from '@clerk/expo'
+import { useSignIn } from '@clerk/expo/legacy'
 import { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -23,6 +23,7 @@ export default function SignInScreen() {
         await setActive({ session: result.createdSessionId })
       }
     } catch (err: unknown) {
+      console.error('[mobile] sign-in failed', err)
       const message = err instanceof Error ? err.message : 'Erro ao iniciar sessão'
       setError(message)
     }

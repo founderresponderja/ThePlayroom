@@ -36,8 +36,8 @@ export default function EventsScreen() {
       const token = await getToken()
       const data = await apiFetch<Event[]>('/api/events', token)
       setEvents(data)
-    } catch {
-      // ignore events errors for MVP
+    } catch (error) {
+      console.error('[mobile] failed to load events', error)
     }
     setLoading(false)
   }, [getToken])

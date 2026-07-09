@@ -28,8 +28,8 @@ export default function MatchesScreen() {
       const token = await getToken()
       const data = await apiFetch<Match[]>('/api/matches', token)
       setMatches(data)
-    } catch {
-      // ignore matches errors for MVP
+    } catch (error) {
+      console.error('[mobile] failed to load matches', error)
     }
     setLoading(false)
   }, [getToken])

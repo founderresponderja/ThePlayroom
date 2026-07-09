@@ -46,12 +46,15 @@ export default function PhotoUploader({ photos, onUploadComplete, onDelete, onSe
       if (!uploadRes.ok) throw new Error('Falha no upload. Tenta novamente.')
 
       // 3. Confirm upload, run safety checks, and save record to DB
-      const saveRes = await fetch('/api/photos/confirm', {
+      const saveRes = await fetch('/api/photos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, isPrivate: false, isPrimary: photos.length === 0 }),
       })
-      if (!saveRes.ok) throw new Error('Falha ao guardar foto.')
+      if (!saveRes.ok) {
+        const err = (await saveRes.json().catch(() => null)) as { error?: string } | null
+        throw new Error(err?.error ?? 'Falha ao guardar foto.')
+      }
       const photo = (await saveRes.json()) as Photo
       onUploadComplete(photo)
     } catch (e) {

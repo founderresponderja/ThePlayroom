@@ -29,8 +29,8 @@ export default function ShopScreen() {
       const token = await getToken()
       const data = await apiFetch<Product[]>('/api/products', token)
       setProducts(data)
-    } catch {
-      // ignore marketplace errors for MVP
+    } catch (error) {
+      console.error('[mobile] failed to load marketplace products', error)
     }
     setLoading(false)
   }, [getToken])

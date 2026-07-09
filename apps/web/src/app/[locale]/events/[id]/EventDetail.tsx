@@ -37,6 +37,7 @@ type Props = {
   locationRevealed: boolean
   isVip: boolean
   isLoggedIn: boolean
+  isCreator: boolean
   locale: string
 }
 
@@ -48,7 +49,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function EventDetail({
-  event, club, userReservation, locationRevealed, isVip, isLoggedIn, locale,
+  event, club, userReservation, locationRevealed, isVip, isLoggedIn, isCreator, locale,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading]       = useState(false)
@@ -84,6 +85,15 @@ export default function EventDetail({
   }
 
   const reservationStatus = reservation ? statusLabels[reservation.status] : null
+  const reservationActionLabels: Record<string, string> = {
+    requested: 'Pendente',
+    waitlist: 'Em Waitlist',
+    accepted: 'Aceite',
+    declined: 'Recusada',
+  }
+  const reservationActionLabel = reservation
+    ? reservationActionLabels[reservation.status] ?? 'Reserva ativa'
+    : null
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '1.5rem' }}>
@@ -166,21 +176,39 @@ export default function EventDetail({
         )}
 
         {/* Reserve CTA */}
-        {!reservation && (
-          <button
-            onClick={() => void handleReserve()}
-            disabled={loading}
-            className="btn-primary"
-            style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', opacity: loading ? 0.7 : 1 }}
-          >
-            {loading ? 'A reservar...' : '🍍 Reservar lugar'}
-          </button>
-        )}
+        <button
+          onClick={() => void handleReserve()}
+          disabled={loading || !!reservation}
+          className="btn-primary"
+          style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', opacity: loading || reservation ? 0.7 : 1 }}
+        >
+          {loading ? 'A reservar...' : reservationActionLabel ? `🍍 ${reservationActionLabel}` : '🍍 Reservar lugar'}
+        </button>
 
         {reservation?.status === 'declined' && (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: '0.85rem' }}>
             A tua reserva foi recusada. Contacta o organizador para mais informações.
           </p>
+        )}
+
+        {isCreator && (
+          <button
+            type="button"
+            onClick={() => router.push(`/${locale}/events/${event.id}/manage`)}
+            style={{
+              marginTop: '0.75rem',
+              width: '100%',
+              padding: '0.75rem',
+              borderRadius: '0.75rem',
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Gerir Reservas do Evento
+          </button>
         )}
       </div>
     </div>
