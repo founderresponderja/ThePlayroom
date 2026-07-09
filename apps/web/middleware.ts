@@ -11,8 +11,9 @@ const intlMiddleware = createMiddleware({
   localeDetection: true,
 })
 
-export default clerkMiddleware((auth, req) => {
-  void auth
+export default clerkMiddleware(async (auth, req) => {
+  // Initialize Clerk auth context for downstream auth() calls in server components/routes.
+  await auth()
 
   const { pathname, search } = req.nextUrl
 
