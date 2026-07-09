@@ -38,18 +38,31 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     redirect('/pt')
   }
 
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  if (!publishableKey) {
+    throw new Error('Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY')
+  }
+
   // Explicitly set locale from URL params so useTranslations in all child
   // server components uses the correct locale regardless of requestLocale
   // propagation issues between clerkMiddleware and intlMiddleware.
   setRequestLocale(params.locale)
 
   const messages = await getMessages()
+  const signInUrl = `/${params.locale}/sign-in`
+  const signUpUrl = `/${params.locale}/sign-up`
+  const postSignInUrl = `/${params.locale}/dashboard`
+  const postSignUpUrl = `/${params.locale}/onboarding`
 
   return (
     <ClerkProvider
-      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      signInUrl={`/${params.locale}/sign-in`}
-      signUpUrl={`/${params.locale}/sign-up`}
+      publishableKey={publishableKey}
+      signInUrl={signInUrl}
+      signUpUrl={signUpUrl}
+      signInForceRedirectUrl={postSignInUrl}
+      signInFallbackRedirectUrl={postSignInUrl}
+      signUpForceRedirectUrl={postSignUpUrl}
+      signUpFallbackRedirectUrl={postSignUpUrl}
     >
       <NextIntlClientProvider locale={params.locale} messages={messages}>
         <script

@@ -1,5 +1,17 @@
 import { SignIn } from '@clerk/nextjs'
 
-export default function SignInPage() {
-  return <SignIn />
+interface SignInPageProps {
+  params: { locale: string }
+}
+
+export default function SignInPage({ params }: SignInPageProps) {
+  return (
+    <SignIn
+      routing="path"
+      path={`/${params.locale}/sign-in`}
+      signUpUrl={`/${params.locale}/sign-up`}
+      forceRedirectUrl={`/${params.locale}/dashboard`}
+      fallbackRedirectUrl={`/${params.locale}/dashboard`}
+    />
+  )
 }
