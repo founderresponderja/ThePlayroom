@@ -1,7 +1,9 @@
-import { auth } from '@clerk/nextjs/server'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { NextRequest } from 'next/server'
 import { db, users, eq } from '@playroom/db'
+import { getValidClerkSession } from '@/lib/auth'
 import PushWrapper from './PushWrapper'
 
 const accountTypeLabels: Record<string, string> = {
@@ -31,7 +33,10 @@ export default async function DashboardPage({
 }: {
   params: { locale: string }
 }) {
-  const { userId } = await auth()
+  const req = new NextRequest('https://www.theplayroom.pt', {
+    headers: new Headers(headers()),
+  })
+  const { userId } = await getValidClerkSession(req)
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
   const user = await db.query.users.findFirst({
