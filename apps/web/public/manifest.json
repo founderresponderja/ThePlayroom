@@ -8,13 +8,13 @@
   "theme_color": "#FF1F3D",
   "icons": [
     {
-      "src": "/brand/pineapple-app-icon.png",
+      "src": "/brand/pineapple-app-icon.png?v=20260709b",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/brand/pineapple-app-icon.png",
+      "src": "/brand/pineapple-app-icon.png?v=20260709b",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "maskable"

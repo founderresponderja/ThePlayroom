@@ -7,8 +7,10 @@ const nextConfig = {
   images: {
     domains: ['images.unsplash.com'],
   },
-  outputFileTracingIncludes: {
-    '/(.*)': ['./messages/**/*.json'],
+  experimental: {
+    outputFileTracingIncludes: {
+      '/(.*)': ['./messages/**/*.json'],
+    },
   },
 }
 

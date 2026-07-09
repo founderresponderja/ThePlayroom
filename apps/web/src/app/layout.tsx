@@ -9,11 +9,10 @@ export const metadata: Metadata = {
   description: 'Privacy-first lifestyle matchmaking for the consensual non-monogamy community.',
   icons: {
     icon: [
-      { url: '/brand/pineapple-app-icon.png', type: 'image/png' },
-      { url: '/favicon.ico' },
+      { url: '/brand/pineapple-app-icon.png?v=20260709b', type: 'image/png' },
     ],
-    apple: [{ url: '/brand/pineapple-app-icon.png' }],
-    shortcut: ['/brand/pineapple-app-icon.png'],
+    apple: [{ url: '/brand/pineapple-app-icon.png?v=20260709b' }],
+    shortcut: ['/brand/pineapple-app-icon.png?v=20260709b'],
   },
 }
 

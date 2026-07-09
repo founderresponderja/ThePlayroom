@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   title: 'The Playroom Admin',
   description: 'Admin dashboard for The Playroom trust and safety operations.',
   icons: {
-    icon: [{ url: '/brand/pineapple-app-icon.png', type: 'image/png' }],
-    apple: [{ url: '/brand/pineapple-app-icon.png' }],
-    shortcut: ['/brand/pineapple-app-icon.png']
+    icon: [{ url: '/brand/pineapple-app-icon.png?v=20260709b', type: 'image/png' }],
+    apple: [{ url: '/brand/pineapple-app-icon.png?v=20260709b' }],
+    shortcut: ['/brand/pineapple-app-icon.png?v=20260709b']
   }
 };
 

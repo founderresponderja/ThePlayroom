@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 
 type PhotoItem = {
@@ -33,7 +34,9 @@ export default function ModerationQueue({ initialPhotos }: { initialPhotos: Phot
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
       {photos.map((photo) => (
         <div key={photo.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', overflow: 'hidden' }}>
-          <img src={photo.url} alt={photo.displayName} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+          <div style={{ position: 'relative', width: '100%', height: '180px' }}>
+            <Image src={photo.url} alt={photo.displayName} fill unoptimized style={{ objectFit: 'cover' }} />
+          </div>
           <div style={{ padding: '0.9rem' }}>
             <div style={{ color: 'var(--text)', fontWeight: 600, marginBottom: '0.25rem' }}>{photo.displayName}</div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.25rem' }}>{photo.accountType}</div>
