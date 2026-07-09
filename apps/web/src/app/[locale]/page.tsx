@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { setRequestLocale } from 'next-intl/server'
 
 interface PageProps {
   params: {
@@ -9,6 +10,7 @@ interface PageProps {
 }
 
 export default function Page({ params }: PageProps) {
+  setRequestLocale(params.locale)
   const hero = useTranslations('hero')
   const nav = useTranslations('nav')
   const how = useTranslations('howItWorks')

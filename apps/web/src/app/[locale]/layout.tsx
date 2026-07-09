@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
 import { NextIntlClientProvider } from 'next-intl'
-import { getMessages } from 'next-intl/server'
+import { getMessages, setRequestLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { Navbar } from '../../components/Navbar'
 import { AgeGate } from '../../components/AgeGate'
@@ -37,6 +37,11 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   if (!isSupportedLocale(params.locale)) {
     redirect('/pt')
   }
+
+  // Explicitly set locale from URL params so useTranslations in all child
+  // server components uses the correct locale regardless of requestLocale
+  // propagation issues between clerkMiddleware and intlMiddleware.
+  setRequestLocale(params.locale)
 
   const messages = await getMessages()
 
