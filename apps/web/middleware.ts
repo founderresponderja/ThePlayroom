@@ -11,10 +11,6 @@ const intlMiddleware = createMiddleware({
   localeDetection: true,
 })
 
-function hasLocalePrefix(pathname: string) {
-  return /^\/(pt|en|es)(\/|$)/.test(pathname)
-}
-
 export default clerkMiddleware((auth, req) => {
   void auth
 
@@ -37,11 +33,8 @@ export default clerkMiddleware((auth, req) => {
     return intlResponse
   }
 
-  const localeFromPath = hasLocalePrefix(pathname) ? (pathname.split('/')[1] ?? 'pt') : 'pt'
-  const requestHeaders = new Headers(req.headers)
-  requestHeaders.set('x-next-intl-locale', localeFromPath)
-
-  return NextResponse.next({ request: { headers: requestHeaders } })
+  // Return next-intl response as-is so Clerk middleware request context is preserved for auth().
+  return intlResponse
 })
 
 export const config = {
