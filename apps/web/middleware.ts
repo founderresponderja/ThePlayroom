@@ -12,7 +12,16 @@ const intlMiddleware = createMiddleware({
 
 export default clerkMiddleware((auth, req) => {
   void auth
-  return intlMiddleware(req)
+  const response = intlMiddleware(req)
+
+  // Ensure x-next-intl-locale propagates as a request header so that
+  // getRequestConfig can read it via headers() when requestLocale fails.
+  const localeFromPath = req.nextUrl.pathname.split('/')[1] ?? ''
+  const resolvedLocale: string =
+    supportedLocales.includes(localeFromPath) ? localeFromPath : 'pt'
+  response.headers.set('x-next-intl-locale', resolvedLocale)
+
+  return response
 })
 
 export const config = {
