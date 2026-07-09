@@ -1,6 +1,16 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import {
+  isCoupleAccount,
+  isDatingAccount,
+  isSingleAccount,
+  LOOKING_FOR_OPTIONS,
+  ORIENTATION_OPTIONS,
+  type LookingForOption,
+  type SexualOrientationOption,
+} from '@/lib/relationship-preferences'
 
 type AccountType = 'FEMALE_SINGLE' | 'MALE_SINGLE' | 'COUPLE_MF' | 'COUPLE_MM' | 'COUPLE_FF' | 'SWING_CLUB' | 'SEX_SHOP'
 
@@ -19,47 +29,128 @@ export default function OnboardingWizard() {
   const params = useParams()
   const locale = params.locale as string
 
-  const [step, setStep] = useState(1)
+  const [stepIndex, setStepIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [accountType, setAccountType] = useState<AccountType | null>(null)
+  const [quizStatus, setQuizStatus] = useState<{ completed: boolean; accountTypeAtTime: string | null } | null>(null)
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [partner2Name, setPartner2Name] = useState('')
   const [city, setCity] = useState('')
+  const [singleOrientation, setSingleOrientation] = useState<SexualOrientationOption | ''>('')
+  const [singleLookingFor, setSingleLookingFor] = useState<LookingForOption[]>([])
+  const [member1Orientation, setMember1Orientation] = useState<SexualOrientationOption | ''>('')
+  const [member2Orientation, setMember2Orientation] = useState<SexualOrientationOption | ''>('')
+  const [member1LookingFor, setMember1LookingFor] = useState<LookingForOption[]>([])
+  const [member2LookingFor, setMember2LookingFor] = useState<LookingForOption[]>([])
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const [userRes, quizRes] = await Promise.all([fetch('/api/users/me'), fetch('/api/quiz')])
+        if (userRes.ok) {
+          const user = await userRes.json()
+          if (user?.accountType) setAccountType(user.accountType)
+        }
+        if (quizRes.ok) {
+          const quiz = await quizRes.json()
+          setQuizStatus({ completed: Boolean(quiz?.completed), accountTypeAtTime: quiz?.accountTypeAtTime ?? null })
+        }
+      } catch {
+        // Keep onboarding usable even if bootstrap fails.
+      }
+    }
+    void bootstrap()
+  }, [])
+
+  const flow = useMemo(() => {
+    if (isDatingAccount(accountType)) return ['account', 'preferences', 'dob', 'name', 'location'] as const
+    return ['account', 'dob', 'name', 'location'] as const
+  }, [accountType])
+
+  const currentStep = flow[stepIndex]
+  const progressPercent = ((stepIndex + 1) / flow.length) * 100
+
+  const needsKinkTest =
+    isDatingAccount(accountType) && (!quizStatus?.completed || quizStatus?.accountTypeAtTime !== accountType)
 
   const handleAccountTypeSelect = (type: AccountType) => {
     setAccountType(type)
   }
 
-  const handleNextStep = async () => {
+  const toggleLookingFor = (
+    value: LookingForOption,
+    setter: Dispatch<SetStateAction<LookingForOption[]>>,
+  ) => {
+    setter((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]))
+  }
+
+  const goNext = async () => {
     setError('')
-    if (step === 1 && !accountType) {
+    if (currentStep === 'account' && !accountType) {
       setError('Por favor seleciona um tipo de conta')
       return
     }
-    if (step === 2 && !dateOfBirth) {
+
+    if (currentStep === 'account' && isDatingAccount(accountType) && needsKinkTest) {
+      try {
+        await fetch('/api/users/me', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountType }),
+        })
+      } catch {
+        // Ignore PATCH errors here and still allow redirect to kink test.
+      }
+      router.push(`/${locale}/kink-test?fromOnboarding=1`)
+      return
+    }
+
+    if (currentStep === 'preferences' && isSingleAccount(accountType)) {
+      if (!singleOrientation) {
+        setError('Seleciona a tua orientação sexual')
+        return
+      }
+      if (singleLookingFor.length === 0) {
+        setError('Seleciona pelo menos uma opção do que procuras')
+        return
+      }
+    }
+
+    if (currentStep === 'preferences' && isCoupleAccount(accountType)) {
+      if (!member1Orientation || !member2Orientation) {
+        setError('Seleciona a orientação de ambos os membros do casal')
+        return
+      }
+      if (member1LookingFor.length === 0 || member2LookingFor.length === 0) {
+        setError('Cada membro deve selecionar pelo menos uma opção do que procura')
+        return
+      }
+    }
+
+    if (currentStep === 'dob' && !dateOfBirth) {
       setError('Por favor seleciona a data de nascimento')
       return
     }
-    if (step === 2 && dateOfBirth) {
+    if (currentStep === 'dob' && dateOfBirth) {
       const age = new Date().getFullYear() - dateOfBirth.getFullYear()
       if (age < 18) {
         setError('Tens de ter pelo menos 18 anos para aceder ao The Playroom.')
         return
       }
     }
-    if (step === 3 && !displayName.trim()) {
+    if (currentStep === 'name' && !displayName.trim()) {
       setError('Por favor preenche o teu nome')
       return
     }
-    if (step === 3 && accountType?.startsWith('COUPLE') && !partner2Name.trim()) {
+    if (currentStep === 'name' && accountType?.startsWith('COUPLE') && !partner2Name.trim()) {
       setError('Por favor preenche o nome do teu parceiro')
       return
     }
 
-    if (step < 4) {
-      setStep(step + 1)
+    if (stepIndex < flow.length - 1) {
+      setStepIndex(stepIndex + 1)
     } else {
       await completeOnboarding()
     }
@@ -71,15 +162,15 @@ export default function OnboardingWizard() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setLoading(false)
-          handleNextStep()
+          goNext()
         },
         () => {
           setLoading(false)
-          handleNextStep()
+          goNext()
         }
       )
     } else {
-      handleNextStep()
+      goNext()
     }
   }
 
@@ -99,7 +190,7 @@ export default function OnboardingWizard() {
       }
 
       if (dateOfBirth) {
-        updates.dateOfBirth = dateOfBirth
+        updates.dateOfBirth = dateOfBirth.toISOString()
       }
 
       const res = await fetch('/api/users/me', {
@@ -111,23 +202,51 @@ export default function OnboardingWizard() {
       if (!res.ok) throw new Error('Failed to update user')
 
       const trimmedCity = city.trim()
-      if (trimmedCity) {
+      const preferences: Record<string, unknown> = {}
+      if (isSingleAccount(accountType)) {
+        preferences.matchPreferences = {
+          orientation: singleOrientation,
+          lookingFor: singleLookingFor,
+        }
+      }
+
+      if (isCoupleAccount(accountType)) {
+        preferences.matchPreferences = {
+          members: {
+            member1: {
+              orientation: member1Orientation,
+              lookingFor: member1LookingFor,
+            },
+            member2: {
+              orientation: member2Orientation,
+              lookingFor: member2LookingFor,
+            },
+          },
+        }
+      }
+
+      if (trimmedCity || Object.keys(preferences).length > 0) {
         const profileRes = await fetch('/api/profile', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ approxLocation: { city: trimmedCity } }),
+          body: JSON.stringify({
+            approxLocation: trimmedCity ? { city: trimmedCity } : undefined,
+            preferences,
+          }),
         })
 
         if (!profileRes.ok) throw new Error('Failed to update location')
       }
 
       // Redirect to next step
-      if (accountType?.startsWith('COUPLE') || accountType === 'FEMALE_SINGLE' || accountType === 'MALE_SINGLE') {
-        router.push(`/${locale}/kink-test`)
+      if ((accountType?.startsWith('COUPLE') || accountType === 'FEMALE_SINGLE' || accountType === 'MALE_SINGLE') && needsKinkTest) {
+        router.push(`/${locale}/kink-test?fromOnboarding=1`)
       } else if (accountType === 'SWING_CLUB') {
         router.push(`/${locale}/club-setup`)
       } else if (accountType === 'SEX_SHOP') {
         router.push(`/${locale}/shop-setup`)
+      } else {
+        router.push(`/${locale}/dashboard`)
       }
     } catch (err) {
       setError('Erro ao guardar dados. Tenta novamente.')
@@ -136,8 +255,6 @@ export default function OnboardingWizard() {
       setLoading(false)
     }
   }
-
-  const progressPercent = (step / 4) * 100
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', overflow: 'hidden' }}>
@@ -153,7 +270,7 @@ export default function OnboardingWizard() {
 
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Step 1: Account Type */}
-        {step === 1 && (
+        {currentStep === 'account' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
             <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>O teu tipo de conta</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
@@ -192,11 +309,138 @@ export default function OnboardingWizard() {
             </div>
 
             {error && <p style={{ color: 'var(--primary)', marginBottom: '1rem' }}>{error}</p>}
+
+            {isDatingAccount(accountType) && (
+              <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
+                <p style={{ color: 'var(--text)', fontWeight: 600, marginBottom: '0.25rem' }}>🧪 Kinky Test no início</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  Singles e casais fazem o Kinky Test antes de concluir onboarding. Em casais, cada membro responde individualmente.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Step 2: Date of Birth */}
-        {step === 2 && (
+        {/* Step 2: Preferences for singles/couples */}
+        {currentStep === 'preferences' && (
+          <div style={{ animation: 'fadeIn 0.3s ease' }}>
+            <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>O que procuras?</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Escolha múltipla para os teus matches preferidos</p>
+
+            {isSingleAccount(accountType) && (
+              <>
+                <div style={{ marginBottom: '1rem' }}>
+                  <p style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>Orientação sexual</p>
+                  <select
+                    value={singleOrientation}
+                    onChange={(event) => setSingleOrientation(event.target.value as SexualOrientationOption)}
+                    style={{ padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--surface)', color: 'var(--text)', width: '100%', maxWidth: '320px' }}
+                  >
+                    <option value="">Seleciona...</option>
+                    {ORIENTATION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {LOOKING_FOR_OPTIONS.map((option) => (
+                    <button
+                      type="button"
+                      key={option.value}
+                      onClick={() => toggleLookingFor(option.value, setSingleLookingFor)}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '999px',
+                        border: singleLookingFor.includes(option.value) ? '2px solid var(--primary)' : '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {isCoupleAccount(accountType) && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <div style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
+                  <p style={{ color: 'var(--text)', fontWeight: 600, marginBottom: '0.5rem' }}>Membro 1</p>
+                  <select
+                    value={member1Orientation}
+                    onChange={(event) => setMember1Orientation(event.target.value as SexualOrientationOption)}
+                    style={{ padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--surface)', color: 'var(--text)', width: '100%', maxWidth: '320px', marginBottom: '0.75rem' }}
+                  >
+                    <option value="">Orientação sexual...</option>
+                    {ORIENTATION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {LOOKING_FOR_OPTIONS.map((option) => (
+                      <button
+                        type="button"
+                        key={`m1-${option.value}`}
+                        onClick={() => toggleLookingFor(option.value, setMember1LookingFor)}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '999px',
+                          border: member1LookingFor.includes(option.value) ? '2px solid var(--primary)' : '1px solid var(--border)',
+                          background: 'var(--surface)',
+                          color: 'var(--text)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
+                  <p style={{ color: 'var(--text)', fontWeight: 600, marginBottom: '0.5rem' }}>Membro 2</p>
+                  <select
+                    value={member2Orientation}
+                    onChange={(event) => setMember2Orientation(event.target.value as SexualOrientationOption)}
+                    style={{ padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--surface)', color: 'var(--text)', width: '100%', maxWidth: '320px', marginBottom: '0.75rem' }}
+                  >
+                    <option value="">Orientação sexual...</option>
+                    {ORIENTATION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {LOOKING_FOR_OPTIONS.map((option) => (
+                      <button
+                        type="button"
+                        key={`m2-${option.value}`}
+                        onClick={() => toggleLookingFor(option.value, setMember2LookingFor)}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '999px',
+                          border: member2LookingFor.includes(option.value) ? '2px solid var(--primary)' : '1px solid var(--border)',
+                          background: 'var(--surface)',
+                          color: 'var(--text)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {error && <p style={{ color: 'var(--primary)', marginTop: '1rem' }}>{error}</p>}
+          </div>
+        )}
+
+        {/* Date of Birth */}
+        {currentStep === 'dob' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
             <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>Data de nascimento</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Tens de ter pelo menos 18 anos</p>
@@ -224,7 +468,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Step 3: Display Name */}
-        {step === 3 && (
+        {currentStep === 'name' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
             <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>Como te queres chamar?</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Este é o teu nome visível no perfil</p>
@@ -273,7 +517,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Step 4: Location */}
-        {step === 4 && (
+        {currentStep === 'location' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
             <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>A tua localização</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
@@ -337,9 +581,9 @@ export default function OnboardingWizard() {
 
         {/* Navigation buttons */}
         <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem', justifyContent: 'flex-end' }}>
-          {step > 1 && (
+          {stepIndex > 0 && (
             <button
-              onClick={() => setStep(step - 1)}
+              onClick={() => setStepIndex(stepIndex - 1)}
               style={{
                 padding: '0.75rem 1.5rem',
                 background: 'transparent',
@@ -353,7 +597,7 @@ export default function OnboardingWizard() {
             </button>
           )}
           <button
-            onClick={() => handleNextStep()}
+            onClick={() => goNext()}
             disabled={loading}
             style={{
               padding: '0.75rem 1.5rem',
@@ -365,7 +609,7 @@ export default function OnboardingWizard() {
               opacity: loading ? 0.6 : 1,
             }}
           >
-            {loading ? 'A processar...' : step === 4 ? 'Terminar' : 'Seguinte'}
+            {loading ? 'A processar...' : currentStep === 'location' ? 'Terminar' : 'Seguinte'}
           </button>
         </div>
       </div>

@@ -16,8 +16,11 @@ const onboardingPayloadSchema = z.object({
   ageVerifiedAt: z
     .string()
     .datetime({ offset: true })
-    .transform((value: string) => new Date(value)),
-  onboardingComplete: z.boolean(),
+    .transform((value: string) => new Date(value))
+    .optional(),
+  onboardingComplete: z.boolean().optional(),
+}).refine((payload) => Object.keys(payload).length > 0, {
+  message: 'At least one field is required',
 })
 
 function formatZodError(error: z.ZodError) {

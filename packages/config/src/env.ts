@@ -10,6 +10,7 @@ export const appEnvSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string(),
   STRIPE_CONNECT_CLIENT_ID: z.string(),
   GOOGLE_MAPS_API_KEY: z.string(),
+  OPENAI_API_KEY: z.string().optional(),
   EXPO_PUSH_KEY: z.string().optional(),
   MAKE_WEBHOOK_URL: z.string().url().optional(),
   JWT_SECRET: z.string(),

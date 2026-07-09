@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
       isVip: users.isVip,
       bio: profiles.bio,
       interests: profiles.interests,
+      preferences: profiles.preferences,
       // Schema stores location as jsonb object, not separate lat/lng columns
       approxLocation: profiles.approxLocation,
     })
@@ -134,6 +135,27 @@ export async function GET(req: NextRequest) {
       sharedTags: [],
     }))
   }
+
+  finalCandidates = finalCandidates.map((candidate) => {
+    const preferences = (candidate.preferences ?? {}) as Record<string, any>
+    const couplePublicProfile = preferences.couplePublicProfile as
+      | { headline?: string; about?: string; commonCharacteristics?: string[] }
+      | undefined
+
+    if (typeof candidate.accountType === 'string' && candidate.accountType.startsWith('COUPLE_') && couplePublicProfile) {
+      return {
+        ...candidate,
+        displayName: couplePublicProfile.headline ?? candidate.displayName,
+        bio: couplePublicProfile.about ?? candidate.bio,
+        sharedTags:
+          Array.isArray(couplePublicProfile.commonCharacteristics) && couplePublicProfile.commonCharacteristics.length > 0
+            ? couplePublicProfile.commonCharacteristics
+            : candidate.sharedTags,
+      }
+    }
+
+    return candidate
+  })
 
   return NextResponse.json(finalCandidates)
 }

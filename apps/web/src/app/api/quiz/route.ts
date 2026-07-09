@@ -1,7 +1,9 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, quizResults } from '@playroom/db'
+import { db, profiles, quizResults, eq, desc } from '@playroom/db'
 import { sql } from 'drizzle-orm'
+import { calculateCompatibility } from '@/lib/matching'
+import { generateCouplePublicProfile } from '@/lib/ai-couple-profile'
 
 function deriveTags(answers: Record<string, { rating: string; intensity?: number; role?: string }>) {
   const tags: string[] = []
@@ -10,6 +12,12 @@ function deriveTags(answers: Record<string, { rating: string; intensity?: number
     if (val.rating === 'maybe') tags.push(`curious:${key}`)
   })
   return tags
+}
+
+function deriveYesTags(answers: Record<string, { rating: string }>) {
+  return Object.entries(answers)
+    .filter(([, val]) => val.rating === 'yes')
+    .map(([key]) => key)
 }
 
 function deriveArchetype(
@@ -26,25 +34,163 @@ function deriveArchetype(
   return 'The Selective'
 }
 
+function intersectTags(a: string[], b: string[]) {
+  const setB = new Set(b)
+  return a.filter((tag) => setB.has(tag))
+}
+
+function normalizeObject(value: unknown) {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+export async function GET() {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const userResult = await (db as any).execute(sql`select id from users where clerk_user_id = ${userId} limit 1`)
+  const user = userResult?.[0] as { id: number } | undefined
+  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  const latestQuiz = await db.query.quizResults.findFirst({
+    where: eq(quizResults.userId, user.id),
+    orderBy: (q) => [desc(q.createdAt)],
+  })
+
+  const rawAnswers = normalizeObject(latestQuiz?.answers)
+  const memberAnswers = normalizeObject(rawAnswers.memberAnswers)
+  const coupleMembersCompleted = [memberAnswers.member1, memberAnswers.member2].filter(Boolean).length
+
+  return NextResponse.json({
+    completed: Boolean(latestQuiz),
+    accountTypeAtTime: latestQuiz?.accountTypeAtTime ?? null,
+    coupleMembersCompleted,
+    createdAt: latestQuiz?.createdAt ?? null,
+  })
+}
+
 export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const { answers, accountTypeAtTime } = await req.json()
-
-    const derivedTags = deriveTags(answers)
-    const archetype = deriveArchetype(answers, accountTypeAtTime)
+    const { answers, memberAnswers, accountTypeAtTime } = await req.json()
 
     const userResult = await (db as any).execute(sql`select * from users where clerk_user_id = ${userId} limit 1`)
     const user = userResult?.[0] as { id: number } | undefined
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
+    const isCoupleAccount = typeof accountTypeAtTime === 'string' && accountTypeAtTime.startsWith('COUPLE_')
+
+    if (isCoupleAccount) {
+      const member1 = (memberAnswers?.member1 ?? {}) as Record<string, { rating: string }>
+      const member2 = (memberAnswers?.member2 ?? {}) as Record<string, { rating: string }>
+
+      const member1Tags = deriveTags(member1)
+      const member2Tags = deriveTags(member2)
+      const member1YesTags = deriveYesTags(member1)
+      const member2YesTags = deriveYesTags(member2)
+      const sharedTags = intersectTags(member1YesTags, member2YesTags)
+
+      const member1Archetype = deriveArchetype(member1, accountTypeAtTime)
+      const member2Archetype = deriveArchetype(member2, accountTypeAtTime)
+      const compatibility = calculateCompatibility(member1Tags, member2Tags)
+
+      const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, user.id) })
+      const existingPreferences = normalizeObject(profile?.preferences)
+      const matchPreferences = normalizeObject(existingPreferences.matchPreferences)
+      const members = normalizeObject(matchPreferences.members)
+
+      const member1Prefs = normalizeObject(members.member1)
+      const member2Prefs = normalizeObject(members.member2)
+
+      const generatedCoupleProfile = await generateCouplePublicProfile({
+        accountType: accountTypeAtTime,
+        sharedTags,
+        memberOrientations: [
+          String(member1Prefs.orientation ?? 'not-set'),
+          String(member2Prefs.orientation ?? 'not-set'),
+        ],
+        memberLookingFor: [
+          Array.isArray(member1Prefs.lookingFor) ? (member1Prefs.lookingFor as string[]) : [],
+          Array.isArray(member2Prefs.lookingFor) ? (member2Prefs.lookingFor as string[]) : [],
+        ],
+      })
+
+      await db.insert(quizResults).values({
+        userId: user.id,
+        quizVersion: '2.0',
+        accountTypeAtTime,
+        answers: {
+          memberAnswers: {
+            member1,
+            member2,
+          },
+          memberArchetypes: {
+            member1: member1Archetype,
+            member2: member2Archetype,
+          },
+          coupleCompatibility: {
+            score: compatibility.score,
+            sharedTags: compatibility.sharedTags,
+            incompatible: compatibility.incompatible,
+          },
+        },
+        derivedTags: sharedTags,
+        archetype: `${member1Archetype} + ${member2Archetype}`,
+      })
+
+      const mergedPreferences = {
+        ...existingPreferences,
+        couplePrivateCompatibility: {
+          score: compatibility.score,
+          sharedTags: compatibility.sharedTags,
+          incompatible: compatibility.incompatible,
+          memberArchetypes: {
+            member1: member1Archetype,
+            member2: member2Archetype,
+          },
+          updatedAt: new Date().toISOString(),
+        },
+        couplePublicProfile: generatedCoupleProfile,
+      }
+
+      if (profile) {
+        await db.update(profiles).set({ preferences: mergedPreferences }).where(eq(profiles.userId, user.id))
+      } else {
+        await db.insert(profiles).values({
+          userId: user.id,
+          bio: '',
+          interests: [],
+          preferences: mergedPreferences,
+        })
+      }
+
+      return NextResponse.json({
+        derivedTags: sharedTags,
+        archetype: `${member1Archetype} + ${member2Archetype}`,
+        memberArchetypes: {
+          member1: member1Archetype,
+          member2: member2Archetype,
+        },
+        coupleCompatibility: {
+          score: compatibility.score,
+          sharedTags: compatibility.sharedTags,
+          incompatible: compatibility.incompatible,
+        },
+        couplePublicProfile: generatedCoupleProfile,
+        ai: generatedCoupleProfile.aiMeta,
+      })
+    }
+
+    const normalizedAnswers = (answers ?? {}) as Record<string, { rating: string; intensity?: number; role?: string }>
+    const derivedTags = deriveTags(normalizedAnswers)
+    const archetype = deriveArchetype(normalizedAnswers, accountTypeAtTime)
+
     await db.insert(quizResults).values({
       userId: user.id,
-      quizVersion: '1.0',
+      quizVersion: '2.0',
       accountTypeAtTime,
-      answers,
+      answers: normalizedAnswers,
       derivedTags,
       archetype,
     })

@@ -15,13 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
-    "jsx": "preserve",
-    "paths": {
-      "@playroom/ui": ["packages/ui/src"],
-      "@playroom/core": ["packages/core/src"],
-      "@playroom/db": ["packages/db/src"],
-      "@playroom/config": ["packages/config/src"]
-    }
+    "jsx": "preserve"
   },
   "include": ["packages/**/*", "apps/**/*", "services/**/*"],
   "exclude": ["node_modules", "**/dist", "**/build"]

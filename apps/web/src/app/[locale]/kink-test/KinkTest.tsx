@@ -1,37 +1,47 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { questionSets, archetypes } from '@/data/kink-test-questions'
+import { isCoupleAccount } from '@/lib/relationship-preferences'
 
 type AccountType = 'FEMALE_SINGLE' | 'MALE_SINGLE' | 'COUPLE_MF' | 'COUPLE_MM' | 'COUPLE_FF'
 
+type QuizAnswerValue = { rating: 'yes' | 'no' | 'maybe'; intensity?: number; role?: string }
 interface QuizAnswers {
-  [itemId: string]: { rating: 'yes' | 'no' | 'maybe'; intensity?: number; role?: string }
+  [itemId: string]: QuizAnswerValue
 }
 
 export default function KinkTest() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const locale = params.locale as string
+  const fromOnboarding = searchParams.get('fromOnboarding') === '1'
 
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
   const [accountType, setAccountType] = useState<AccountType | null>(null)
   const [currentCategoryIdx, setCurrentCategoryIdx] = useState(0)
-  const [answers, setAnswers] = useState<QuizAnswers>({})
+
+  const [singleAnswers, setSingleAnswers] = useState<QuizAnswers>({})
+  const [memberIndex, setMemberIndex] = useState(0)
+  const [coupleAnswers, setCoupleAnswers] = useState<{ member1: QuizAnswers; member2: QuizAnswers }>({
+    member1: {},
+    member2: {},
+  })
+
   const [showResults, setShowResults] = useState(false)
   const [archetype, setArchetype] = useState<string | null>(null)
+  const [memberArchetypes, setMemberArchetypes] = useState<{ member1?: string; member2?: string } | null>(null)
   const [derivedTags, setDerivedTags] = useState<string[]>([])
+  const [coupleCompatibility, setCoupleCompatibility] = useState<{ score: number; sharedTags: string[] } | null>(null)
   const [error, setError] = useState('')
 
-  // Fetch user data
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const res = await fetch('/api/users/me')
         if (!res.ok) throw new Error('Failed to fetch user')
         const userData = await res.json()
-        setUser(userData)
         setAccountType(userData.accountType)
         setLoading(false)
       } catch (err) {
@@ -39,7 +49,7 @@ export default function KinkTest() {
         router.push(`/${locale}/onboarding`)
       }
     }
-    fetchUser()
+    void fetchUser()
   }, [locale, router])
 
   if (loading) {
@@ -62,41 +72,79 @@ export default function KinkTest() {
   const categories = [...new Set(questions.map((q) => q.category))]
   const currentCategory = categories[currentCategoryIdx]
   const categoryQuestions = questions.filter((q) => q.category === currentCategory)
+  const coupleMode = isCoupleAccount(accountType)
 
-  const allAnswered = categoryQuestions.every((q) => answers[q.id])
+  const activeAnswers = coupleMode
+    ? memberIndex === 0
+      ? coupleAnswers.member1
+      : coupleAnswers.member2
+    : singleAnswers
+
+  const allAnswered = categoryQuestions.every((q) => activeAnswers[q.id])
+
+  const setActiveAnswers = (next: QuizAnswers) => {
+    if (!coupleMode) {
+      setSingleAnswers(next)
+      return
+    }
+    setCoupleAnswers((prev) =>
+      memberIndex === 0
+        ? { ...prev, member1: next }
+        : { ...prev, member2: next }
+    )
+  }
 
   const handleAnswerChange = (itemId: string, rating: 'yes' | 'no' | 'maybe') => {
-    setAnswers({
-      ...answers,
-      [itemId]: { ...answers[itemId], rating },
+    setActiveAnswers({
+      ...activeAnswers,
+      [itemId]: { ...activeAnswers[itemId], rating },
     })
   }
 
-  const handleNextCategory = () => {
+  const handleNextCategory = async () => {
     if (currentCategoryIdx < categories.length - 1) {
       setCurrentCategoryIdx(currentCategoryIdx + 1)
-    } else {
-      submitQuiz()
+      return
     }
+
+    if (coupleMode && memberIndex === 0) {
+      setMemberIndex(1)
+      setCurrentCategoryIdx(0)
+      return
+    }
+
+    await submitQuiz()
   }
 
   const submitQuiz = async () => {
     setLoading(true)
     try {
+      const payload = coupleMode
+        ? {
+            memberAnswers: {
+              member1: coupleAnswers.member1,
+              member2: coupleAnswers.member2,
+            },
+            accountTypeAtTime: accountType,
+          }
+        : {
+            answers: singleAnswers,
+            accountTypeAtTime: accountType,
+          }
+
       const res = await fetch('/api/quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answers,
-          accountTypeAtTime: accountType,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) throw new Error('Failed to submit quiz')
 
       const result = await res.json()
-      setArchetype(result.archetype)
-      setDerivedTags(result.derivedTags)
+      setArchetype(result.archetype ?? null)
+      setDerivedTags(Array.isArray(result.derivedTags) ? result.derivedTags : [])
+      setMemberArchetypes(result.memberArchetypes ?? null)
+      setCoupleCompatibility(result.coupleCompatibility ?? null)
       setShowResults(true)
     } catch (err) {
       setError('Erro ao guardar teste. Tenta novamente.')
@@ -110,13 +158,27 @@ export default function KinkTest() {
     const archetypeData = archetype ? archetypes[archetype as keyof typeof archetypes] ?? null : null
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '2rem 1rem' }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>{archetypeData?.emoji}</h1>
-          <h2 style={{ color: 'var(--text)', marginBottom: '1rem' }}>{archetypeData?.title}</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>{archetypeData?.description}</p>
+        <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
+          {!coupleMode && (
+            <>
+              <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>{archetypeData?.emoji}</h1>
+              <h2 style={{ color: 'var(--text)', marginBottom: '1rem' }}>{archetypeData?.title}</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>{archetypeData?.description}</p>
+            </>
+          )}
+
+          {coupleMode && (
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
+              <h2 style={{ color: 'var(--text)', marginBottom: '0.75rem' }}>Resultado do casal (privado)</h2>
+              <p style={{ color: 'var(--text-muted)' }}>Compatibilidade interna: <strong style={{ color: 'var(--text)' }}>{coupleCompatibility?.score ?? 0}%</strong></p>
+              <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Membro 1: {memberArchetypes?.member1 ?? 'N/A'} · Membro 2: {memberArchetypes?.member2 ?? 'N/A'}</p>
+            </div>
+          )}
 
           <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ color: 'var(--text)', marginBottom: '1rem' }}>Os teus interesses:</h3>
+            <h3 style={{ color: 'var(--text)', marginBottom: '1rem' }}>
+              {coupleMode ? 'Características comuns do casal:' : 'Os teus interesses:'}
+            </h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
               {derivedTags.map((tag) => (
                 <span
@@ -137,7 +199,7 @@ export default function KinkTest() {
           </div>
 
           <button
-            onClick={() => router.push(`/${locale}/profile`)}
+            onClick={() => router.push(fromOnboarding ? `/${locale}/onboarding` : `/${locale}/profile`)}
             style={{
               padding: '0.75rem 1.5rem',
               background: 'var(--primary)',
@@ -148,7 +210,7 @@ export default function KinkTest() {
               fontSize: '1rem',
             }}
           >
-            Ver o meu perfil
+            {fromOnboarding ? 'Continuar onboarding' : 'Ver o meu perfil'}
           </button>
         </div>
       </div>
@@ -158,9 +220,13 @@ export default function KinkTest() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '2rem 1rem' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        {/* Header */}
         <div style={{ marginBottom: '2rem' }}>
           <h1 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>The Kink Test 🍍</h1>
+          {coupleMode && (
+            <p style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontWeight: 600 }}>
+              Casal: responder individualmente (Membro {memberIndex + 1}/2)
+            </p>
+          )}
           <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
             {currentCategoryIdx + 1} de {categories.length}: {currentCategory}
           </p>
@@ -183,7 +249,6 @@ export default function KinkTest() {
           </div>
         </div>
 
-        {/* Questions */}
         <div style={{ marginBottom: '2rem' }}>
           {categoryQuestions.map((question) => (
             <div
@@ -212,9 +277,9 @@ export default function KinkTest() {
                     onClick={() => handleAnswerChange(question.id, rating)}
                     style={{
                       padding: '0.5rem 1rem',
-                      border: answers[question.id]?.rating === rating ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      border: activeAnswers[question.id]?.rating === rating ? '2px solid var(--primary)' : '1px solid var(--border)',
                       background:
-                        answers[question.id]?.rating === rating
+                        activeAnswers[question.id]?.rating === rating
                           ? rating === 'yes'
                             ? 'rgba(34, 197, 94, 0.1)'
                             : rating === 'no'
@@ -241,7 +306,6 @@ export default function KinkTest() {
 
         {error && <p style={{ color: 'var(--primary)', marginBottom: '1rem' }}>{error}</p>}
 
-        {/* Navigation */}
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'space-between' }}>
           <button
             onClick={() => setCurrentCategoryIdx(Math.max(0, currentCategoryIdx - 1))}
@@ -259,7 +323,7 @@ export default function KinkTest() {
             Voltar
           </button>
           <button
-            onClick={() => handleNextCategory()}
+            onClick={() => void handleNextCategory()}
             disabled={!allAnswered || loading}
             style={{
               padding: '0.75rem 1.5rem',
@@ -271,7 +335,7 @@ export default function KinkTest() {
               opacity: !allAnswered || loading ? 0.6 : 1,
             }}
           >
-            {loading ? 'A processar...' : currentCategoryIdx === categories.length - 1 ? 'Terminar' : 'Seguinte'}
+            {loading ? 'A processar...' : currentCategoryIdx === categories.length - 1 ? (coupleMode && memberIndex === 0 ? 'Próximo membro' : 'Terminar') : 'Seguinte'}
           </button>
         </div>
       </div>

@@ -62,6 +62,18 @@ export default async function DashboardPage({
 
   const isClub = user.accountType === 'SWING_CLUB'
   const isShop = user.accountType === 'SEX_SHOP'
+  const isCouple = user.accountType.startsWith('COUPLE_')
+
+  const profileResult = await (db as any).execute(sql`
+    select preferences
+    from profiles
+    where user_id = ${user.id}
+    limit 1
+  `)
+  const profile = (profileResult?.[0] ?? null) as { preferences?: Record<string, any> } | null
+  const couplePrivateCompatibility = profile?.preferences?.couplePrivateCompatibility as
+    | { score?: number; sharedTags?: string[]; memberArchetypes?: { member1?: string; member2?: string } }
+    | undefined
 
   const navLinks = [
     { href: `/${params.locale}/profile`, label: '👤 O meu perfil' },
@@ -118,6 +130,27 @@ export default async function DashboardPage({
           <p style={{ color: 'var(--text)', fontWeight: 600 }}>{subscriptionTierLabel}</p>
         </div>
       </div>
+
+      {isCouple && couplePrivateCompatibility && (
+        <div
+          style={{
+            marginTop: '1rem',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '0.75rem',
+            padding: '1rem',
+          }}
+        >
+          <p style={{ color: 'var(--text)', fontWeight: 600, marginBottom: '0.35rem' }}>🔒 Compatibilidade privada do casal</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Pontuação interna: <strong style={{ color: 'var(--text)' }}>{couplePrivateCompatibility.score ?? 0}%</strong></p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+            Membro 1: {couplePrivateCompatibility.memberArchetypes?.member1 ?? 'N/A'} · Membro 2: {couplePrivateCompatibility.memberArchetypes?.member2 ?? 'N/A'}
+          </p>
+          {Array.isArray(couplePrivateCompatibility.sharedTags) && couplePrivateCompatibility.sharedTags.length > 0 && (
+            <p style={{ color: 'var(--text-muted)' }}>Tags em comum: {couplePrivateCompatibility.sharedTags.join(', ')}</p>
+          )}
+        </div>
+      )}
 
       <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {navLinks.map((link) => (
