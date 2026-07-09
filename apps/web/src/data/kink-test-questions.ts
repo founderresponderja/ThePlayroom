@@ -3,6 +3,10 @@ export type QuizItem = {
   label: string
   category: string
   description?: string
+  kind?: 'binary' | 'scale' | 'choice'
+  tags?: string[]
+  weight?: number
+  group?: string
 }
 
 const DYNAMICS: QuizItem[] = [

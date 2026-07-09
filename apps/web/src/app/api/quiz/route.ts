@@ -1,9 +1,9 @@
-import { auth } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { db, profiles, quizResults, eq, desc } from '@playroom/db'
 import { sql } from 'drizzle-orm'
 import { calculateCompatibility } from '@/lib/matching'
 import { generateCouplePublicProfile } from '@/lib/ai-couple-profile'
+import { getValidClerkSession } from '@/lib/auth'
 
 function deriveTags(answers: Record<string, { rating: string; intensity?: number; role?: string }>) {
   const tags: string[] = []
@@ -43,8 +43,8 @@ function normalizeObject(value: unknown) {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
 }
 
-export async function GET() {
-  const { userId } = await auth()
+export async function GET(req: NextRequest) {
+  const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userResult = await (db as any).execute(sql`select id from users where clerk_user_id = ${userId} limit 1`)
@@ -68,8 +68,8 @@ export async function GET() {
   })
 }
 
-export async function POST(req: Request) {
-  const { userId } = await auth()
+export async function POST(req: NextRequest) {
+  const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {

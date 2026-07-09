@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { questionSets, archetypes } from '@/data/kink-test-questions'
 import { isCoupleAccount } from '@/lib/relationship-preferences'
@@ -12,6 +13,7 @@ interface QuizAnswers {
 }
 
 export default function KinkTest() {
+  const { getToken } = useAuth()
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
@@ -63,7 +65,7 @@ export default function KinkTest() {
       }
     }
     void fetchUser()
-  }, [accountTypeFallback, locale, router])
+  }, [accountTypeFallback, fromOnboarding, locale, router])
 
   if (loading) {
     return (
@@ -132,6 +134,7 @@ export default function KinkTest() {
   const submitQuiz = async () => {
     setLoading(true)
     try {
+      const authToken = await getToken()
       const payload = coupleMode
         ? {
             memberAnswers: {
@@ -147,7 +150,10 @@ export default function KinkTest() {
 
       const res = await fetch('/api/quiz', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify(payload),
       })
 
