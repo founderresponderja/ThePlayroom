@@ -35,7 +35,15 @@ function resolveLocale(fromMiddleware: string | undefined): SupportedLocale {
 }
 
 export default getRequestConfig(async ({ requestLocale }) => {
-  const locale = resolveLocale(await requestLocale)
+  const fromRequest = await requestLocale
+  let fromHeader: string | null = null
+  try {
+    fromHeader = headers().get('x-next-intl-locale')
+  } catch { /* headers() unavailable in this context */ }
+
+  console.error('[i18n-debug] requestLocale=%s | x-next-intl-locale header=%s', fromRequest, fromHeader)
+
+  const locale = resolveLocale(fromRequest)
 
   return {
     locale,
