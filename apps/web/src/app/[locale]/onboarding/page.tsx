@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { db, users, eq } from '@playroom/db'
+import { db } from '@playroom/db'
 import { sql } from 'drizzle-orm'
 import OnboardingWizard from './OnboardingWizard'
 
@@ -28,19 +28,29 @@ export default async function OnboardingPage({
   if (!user) {
     const now = new Date().toISOString()
 
-    await db
-      .insert(users)
-      .values({
-        clerkUserId: userId,
-        accountType: 'MALE_SINGLE',
-        displayName: 'New User',
-        onboardingComplete: false,
-        verificationLevel: 'none',
-        subscriptionTier: 'free',
-        isVip: false,
-        updatedAt: now,
-      })
-      .onConflictDoNothing({ target: users.clerkUserId })
+    await (db as any).execute(sql`
+      insert into users (
+        clerk_user_id,
+        account_type,
+        display_name,
+        onboarding_complete,
+        verification_level,
+        subscription_tier,
+        is_vip,
+        updated_at
+      )
+      values (
+        ${userId},
+        'MALE_SINGLE',
+        'New User',
+        false,
+        'none',
+        'free',
+        false,
+        ${now}
+      )
+      on conflict (clerk_user_id) do nothing
+    `)
 
     userResult = await (db as any).execute(sql`
       select id, onboarding_complete as "onboardingComplete"
