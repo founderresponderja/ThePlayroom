@@ -1,9 +1,6 @@
-import { headers } from 'next/headers'
+import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { NextRequest } from 'next/server'
-import { db } from '@playroom/db'
-import { sql } from 'drizzle-orm'
-import { getValidClerkSession } from '@/lib/auth'
+import { db, users, eq } from '@playroom/db'
 import OnboardingWizard from './OnboardingWizard'
 
 export default async function OnboardingPage({
@@ -11,14 +8,34 @@ export default async function OnboardingPage({
 }: {
   params: { locale: string }
 }) {
-  const req = new NextRequest('https://www.theplayroom.pt', {
-    headers: new Headers(headers()),
-  })
-  const { userId } = await getValidClerkSession(req)
+  const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
-  const userResult = await (db as any).execute(sql`select * from users where clerk_user_id = ${userId} limit 1`)
-  const user = userResult?.[0] as { onboardingComplete?: boolean } | undefined
+  let user = await db.query.users.findFirst({
+    where: eq(users.clerkUserId, userId),
+  })
+
+  if (!user) {
+    const now = new Date().toISOString()
+
+    await db
+      .insert(users)
+      .values({
+        clerkUserId: userId,
+        accountType: 'MALE_SINGLE',
+        displayName: 'New User',
+        onboardingComplete: false,
+        verificationLevel: 'none',
+        subscriptionTier: 'free',
+        isVip: false,
+        updatedAt: now,
+      })
+      .onConflictDoNothing({ target: users.clerkUserId })
+
+    user = await db.query.users.findFirst({
+      where: eq(users.clerkUserId, userId),
+    })
+  }
 
   if (!user) redirect(`/${params.locale}/sign-in`)
   if (user.onboardingComplete) redirect(`/${params.locale}/dashboard`)

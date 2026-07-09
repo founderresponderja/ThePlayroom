@@ -1,9 +1,7 @@
-import { headers } from 'next/headers'
+import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { NextRequest } from 'next/server'
 import { db, users, eq } from '@playroom/db'
-import { getValidClerkSession } from '@/lib/auth'
 import PushWrapper from './PushWrapper'
 
 const accountTypeLabels: Record<string, string> = {
@@ -33,16 +31,13 @@ export default async function DashboardPage({
 }: {
   params: { locale: string }
 }) {
-  const req = new NextRequest('https://www.theplayroom.pt', {
-    headers: new Headers(headers()),
-  })
-  const { userId } = await getValidClerkSession(req)
+  const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
   const user = await db.query.users.findFirst({
     where: eq(users.clerkUserId, userId),
   })
-  if (!user) redirect(`/${params.locale}/sign-in`)
+  if (!user) redirect(`/${params.locale}/onboarding`)
 
   const accountTypeLabel = accountTypeLabels[user.accountType] ?? user.accountType
   const verificationLabel = verificationLabels[user.verificationLevel ?? 'none'] ?? 'Não verificado'
