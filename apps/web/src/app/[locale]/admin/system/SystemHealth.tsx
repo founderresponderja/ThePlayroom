@@ -27,6 +27,7 @@ export default function SystemHealth({ metrics }: SystemHealthProps) {
     clean: number
     flagged: number
     scannerConfigured: boolean
+    bypassActive: boolean
     note: string
   } | null>(null)
 
@@ -43,6 +44,7 @@ export default function SystemHealth({ metrics }: SystemHealthProps) {
           clean: number
           flagged: number
           scannerConfigured: boolean
+          bypassActive: boolean
           note: string
         }
 
@@ -129,7 +131,21 @@ export default function SystemHealth({ metrics }: SystemHealthProps) {
           <div style={{ color: 'var(--text-muted)' }}>A carregar estatisticas de seguranca...</div>
         ) : (
           <>
-            {!csam.scannerConfigured && (
+            {csam.bypassActive ? (
+              <div
+                style={{
+                  marginBottom: '0.75rem',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid rgba(245, 158, 11, 0.5)',
+                  color: '#fde68a',
+                  borderRadius: '0.5rem',
+                  padding: '0.6rem 0.75rem',
+                  fontSize: '0.85rem',
+                }}
+              >
+                Scanner CSAM em bypass temporário em produção. O upload continua ativo até a key ser reposta.
+              </div>
+            ) : !csam.scannerConfigured ? (
               <div
                 style={{
                   marginBottom: '0.75rem',
@@ -141,14 +157,18 @@ export default function SystemHealth({ metrics }: SystemHealthProps) {
                   fontSize: '0.85rem',
                 }}
               >
-                Scanner CSAM nao configurado. Uploads devem ser bloqueados em producao.
+                Scanner CSAM nao configurado. Verifica a configuracao antes de colocar em produção.
               </div>
-            )}
+            ) : null}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', color: 'var(--text-muted)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Scanner configurado</span>
                 <strong style={{ color: 'var(--text)' }}>{csam.scannerConfigured ? 'Yes' : 'No'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Bypass ativo</span>
+                <strong style={{ color: 'var(--text)' }}>{csam.bypassActive ? 'Yes' : 'No'}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Fotos analisadas (clean)</span>
