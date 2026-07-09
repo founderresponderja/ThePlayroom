@@ -204,6 +204,7 @@ export async function POST(req: Request) {
       clerkUserId: evt.data?.id,
       error,
     })
+    return new Response('Failed to sync Clerk user', { status: 500 })
   }
 
   console.log('[Clerk Webhook]', evt.type, evt.data.id)
