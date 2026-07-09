@@ -1,9 +1,48 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { db, profiles, quizResults, eq, desc } from '@playroom/db'
+import { accountTypeEnum, db, profiles, quizResults, users, eq, desc } from '@playroom/db'
 import { sql } from 'drizzle-orm'
 import { calculateCompatibility } from '@/lib/matching'
 import { generateCouplePublicProfile } from '@/lib/ai-couple-profile'
 import { getValidClerkSession } from '@/lib/auth'
+
+const DEFAULT_ACCOUNT_TYPE = 'MALE_SINGLE'
+
+function normalizeAccountType(value: unknown) {
+  return typeof value === 'string' && accountTypeEnum.enumValues.includes(value as (typeof accountTypeEnum.enumValues)[number])
+    ? (value as (typeof accountTypeEnum.enumValues)[number])
+    : DEFAULT_ACCOUNT_TYPE
+}
+
+async function ensureQuizUser(userId: string, accountTypeAtTime?: unknown) {
+  const existingUserResult = await (db as any).execute(sql`select id from users where clerk_user_id = ${userId} limit 1`)
+  const existingUser = existingUserResult?.[0] as { id: number } | undefined
+
+  if (existingUser) {
+    return existingUser
+  }
+
+  const now = new Date().toISOString()
+  const accountType = normalizeAccountType(accountTypeAtTime)
+
+  await db
+    .insert(users)
+    .values({
+      clerkUserId: userId,
+      accountType,
+      displayName: 'New User',
+      onboardingComplete: false,
+      verificationLevel: 'none',
+      subscriptionTier: 'free',
+      isVip: false,
+      updatedAt: now,
+      deletedAt: null,
+      deletedBy: null,
+    })
+    .onConflictDoNothing({ target: users.clerkUserId })
+
+  const insertedUserResult = await (db as any).execute(sql`select id from users where clerk_user_id = ${userId} limit 1`)
+  return insertedUserResult?.[0] as { id: number } | undefined
+}
 
 function deriveTags(answers: Record<string, { rating: string; intensity?: number; role?: string }>) {
   const tags: string[] = []
@@ -47,8 +86,7 @@ export async function GET(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userResult = await (db as any).execute(sql`select id from users where clerk_user_id = ${userId} limit 1`)
-  const user = userResult?.[0] as { id: number } | undefined
+  const user = await ensureQuizUser(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const latestQuiz = await db.query.quizResults.findFirst({
@@ -75,8 +113,7 @@ export async function POST(req: NextRequest) {
   try {
     const { answers, memberAnswers, accountTypeAtTime } = await req.json()
 
-    const userResult = await (db as any).execute(sql`select * from users where clerk_user_id = ${userId} limit 1`)
-    const user = userResult?.[0] as { id: number } | undefined
+    const user = await ensureQuizUser(userId, accountTypeAtTime)
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const isCoupleAccount = typeof accountTypeAtTime === 'string' && accountTypeAtTime.startsWith('COUPLE_')
