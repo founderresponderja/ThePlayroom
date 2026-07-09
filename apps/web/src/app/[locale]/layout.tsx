@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
 import { NextIntlClientProvider } from 'next-intl'
-import { getLocale, getMessages } from 'next-intl/server'
+import { getMessages } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { Navbar } from '../../components/Navbar'
 import { AgeGate } from '../../components/AgeGate'
@@ -38,16 +38,15 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     redirect('/pt')
   }
 
-  const locale = await getLocale()
   const messages = await getMessages()
 
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      signInUrl={`/${locale}/sign-in`}
-      signUpUrl={`/${locale}/sign-up`}
+      signInUrl={`/${params.locale}/sign-in`}
+      signUpUrl={`/${params.locale}/sign-up`}
     >
-      <NextIntlClientProvider locale={locale} messages={messages}>
+      <NextIntlClientProvider locale={params.locale} messages={messages}>
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -59,7 +58,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
           `,
           }}
         />
-        <Navbar locale={locale} />
+        <Navbar locale={params.locale} />
         <main>{children}</main>
         <AgeGate />
       </NextIntlClientProvider>
