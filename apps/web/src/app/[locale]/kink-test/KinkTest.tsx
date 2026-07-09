@@ -17,9 +17,10 @@ export default function KinkTest() {
   const searchParams = useSearchParams()
   const locale = params.locale as string
   const fromOnboarding = searchParams.get('fromOnboarding') === '1'
+  const accountTypeFallback = searchParams.get('accountType') as AccountType | null
 
-  const [loading, setLoading] = useState(true)
-  const [accountType, setAccountType] = useState<AccountType | null>(null)
+  const [loading, setLoading] = useState(!accountTypeFallback)
+  const [accountType, setAccountType] = useState<AccountType | null>(accountTypeFallback)
   const [currentCategoryIdx, setCurrentCategoryIdx] = useState(0)
 
   const [singleAnswers, setSingleAnswers] = useState<QuizAnswers>({})
@@ -42,15 +43,21 @@ export default function KinkTest() {
         const res = await fetch('/api/users/me')
         if (!res.ok) throw new Error('Failed to fetch user')
         const userData = await res.json()
-        setAccountType(userData.accountType)
+        setAccountType(userData.accountType ?? accountTypeFallback)
         setLoading(false)
       } catch (err) {
         console.error(err)
+        if (accountTypeFallback) {
+          setAccountType(accountTypeFallback)
+          setLoading(false)
+          return
+        }
+
         router.push(`/${locale}/onboarding`)
       }
     }
     void fetchUser()
-  }, [locale, router])
+  }, [accountTypeFallback, locale, router])
 
   if (loading) {
     return (

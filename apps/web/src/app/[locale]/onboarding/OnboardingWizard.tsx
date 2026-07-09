@@ -94,16 +94,17 @@ export default function OnboardingWizard() {
     }
 
     if (currentStep === 'account' && isDatingAccount(accountType) && needsKinkTest) {
+      const selectedAccountType = accountType as AccountType
       try {
         await fetch('/api/users/me', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountType }),
+          body: JSON.stringify({ accountType: selectedAccountType }),
         })
       } catch {
         // Ignore PATCH errors here and still allow redirect to kink test.
       }
-      router.push(`/${locale}/kink-test?fromOnboarding=1`)
+      router.push(`/${locale}/kink-test?fromOnboarding=1&accountType=${encodeURIComponent(selectedAccountType)}`)
       return
     }
 
@@ -240,7 +241,8 @@ export default function OnboardingWizard() {
 
       // Redirect to next step
       if ((accountType?.startsWith('COUPLE') || accountType === 'FEMALE_SINGLE' || accountType === 'MALE_SINGLE') && needsKinkTest) {
-        router.push(`/${locale}/kink-test?fromOnboarding=1`)
+        const selectedAccountType = accountType as AccountType
+        router.push(`/${locale}/kink-test?fromOnboarding=1&accountType=${encodeURIComponent(selectedAccountType)}`)
       } else if (accountType === 'SWING_CLUB') {
         router.push(`/${locale}/club-setup`)
       } else if (accountType === 'SEX_SHOP') {
