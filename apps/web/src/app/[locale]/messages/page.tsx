@@ -1,15 +1,15 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { db, users, threads, photos, moderationStatusEnum, eq, and, or } from '@playroom/db'
+import { db, threads, photos, moderationStatusEnum, eq, and, or } from '@playroom/db'
+import { sql } from 'drizzle-orm'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 import ConversationsList from './ConversationsList'
 
 export default async function MessagesPage({ params }: { params: { locale: string } }) {
   const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) redirect(`/${params.locale}/sign-in`)
 
   // Get all threads this user is a participant in
@@ -26,9 +26,20 @@ export default async function MessagesPage({ params }: { params: { locale: strin
       const otherUserId =
         thread.participantAId === currentUser.id ? thread.participantBId : thread.participantAId
 
-      const otherUser = await db.query.users.findFirst({
-        where: eq(users.id, otherUserId),
-      })
+      const otherUserResult = await (db as any).execute(sql`
+        select
+          id,
+          display_name as "displayName",
+          verification_level as "verificationLevel"
+        from users
+        where id = ${otherUserId}
+        limit 1
+      `)
+      const otherUser = otherUserResult?.[0] as {
+        id: number
+        displayName: string | null
+        verificationLevel: string | null
+      } | undefined
 
       const primaryPhoto = await db.query.photos.findFirst({
         where: and(

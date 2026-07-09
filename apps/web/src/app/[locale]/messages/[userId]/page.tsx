@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { db, users, eq } from '@playroom/db'
+import { db, eq } from '@playroom/db'
+import { sql } from 'drizzle-orm'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 import MessageThread from './MessageThread'
 
 export default async function MessagePage({
@@ -11,14 +13,16 @@ export default async function MessagePage({
   const { userId: clerkId } = await auth()
   if (!clerkId) redirect(`/${params.locale}/sign-in`)
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, clerkId),
-  })
+  const currentUser = await getCurrentUserByClerkId(clerkId)
   if (!currentUser) redirect(`/${params.locale}/sign-in`)
 
-  const otherUser = await db.query.users.findFirst({
-    where: eq(users.id, Number(params.userId)),
-  })
+  const otherUserResult = await (db as any).execute(sql`
+    select id, display_name as "displayName"
+    from users
+    where id = ${Number(params.userId)}
+    limit 1
+  `)
+  const otherUser = otherUserResult?.[0] as { id: number; displayName: string | null } | undefined
   if (!otherUser) redirect(`/${params.locale}/matches`)
 
   return (
@@ -27,7 +31,7 @@ export default async function MessagePage({
       currentClerkId={clerkId}
       otherUserId={otherUser.id}
       otherDisplayName={otherUser.displayName ?? 'Anónimo'}
-      otherPublicKey={otherUser.publicKey ?? null}
+      otherPublicKey={null}
     />
   )
 }

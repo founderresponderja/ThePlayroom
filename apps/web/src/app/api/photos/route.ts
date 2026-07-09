@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, photos, users, eq, and } from '@playroom/db'
+import { db, photos, eq } from '@playroom/db'
 import { deleteObject } from '@/lib/r2'
 import { confirmPhotoUpload, deletePhotoRecordForUser, getAuthenticatedPhotoUser } from './_shared'
 
@@ -9,8 +9,10 @@ export async function GET() {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({ where: eq(users.clerkUserId, userId) })
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  const authResult = await getAuthenticatedPhotoUser()
+  if ('error' in authResult) return authResult.error
+
+  const user = authResult.user
 
   const userPhotos = await db.query.photos.findMany({
     where: eq(photos.userId, user.id),

@@ -1,14 +1,13 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, users, threads, matches, eq, and, or } from '@playroom/db'
+import { db, threads, matches, eq, and, or } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   // otherUserId is users.id (serial integer)

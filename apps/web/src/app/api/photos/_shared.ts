@@ -1,9 +1,10 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { and, db, eq, moderationStatusEnum, photos, sql, users } from '@playroom/db'
+import { and, db, eq, moderationStatusEnum, photos, sql } from '@playroom/db'
 import { z } from 'zod'
 import { getObjectBytes, getObjectKey, getPublicUrl, deleteObject } from '@/lib/r2'
 import { reportCSAM, scanImageForCSAM } from '@/lib/csam'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 const MAX_PHOTOS = 10
 
@@ -31,10 +32,7 @@ export async function getAuthenticatedPhotoUser() {
   const { userId } = await auth()
   if (!userId) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-    columns: { id: true, clerkUserId: true },
-  })
+  const user = await getCurrentUserByClerkId(userId)
 
   if (!user) return { error: NextResponse.json({ error: 'User not found' }, { status: 404 }) }
 

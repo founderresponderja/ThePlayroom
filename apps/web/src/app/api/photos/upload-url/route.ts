@@ -1,9 +1,10 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, eq, photos, users } from '@playroom/db'
+import { db, eq, photos } from '@playroom/db'
 import { getPresignedUploadUrl } from '@/lib/r2'
 import { randomUUID } from 'crypto'
 import { z } from 'zod'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE_MB = 10
@@ -18,10 +19,7 @@ export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-    columns: { id: true },
-  })
+  const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   let body: z.infer<typeof uploadUrlSchema>

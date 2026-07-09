@@ -7,6 +7,7 @@ import { ThemeToggle } from './ThemeToggle'
 
 interface NavbarProps {
   locale: string
+  accountType: string | null
 }
 
 const locales = [
@@ -15,13 +16,30 @@ const locales = [
   { code: 'es', label: 'ES' },
 ]
 
-export function Navbar({ locale }: NavbarProps) {
+export function Navbar({ locale, accountType }: NavbarProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const { isSignedIn } = useUser()
 
   const localePath = useMemo(() => `/${locale}`, [locale])
   const currentPath = useMemo(() => pathname?.startsWith(`/${locale}`) ? pathname : localePath, [pathname, locale, localePath])
+
+  const isShop = accountType === 'SEX_SHOP'
+  const isClub = accountType === 'SWING_CLUB'
+
+  const userMenu = (
+    <UserButton>
+      <UserButton.MenuItems>
+        <UserButton.Link label="Dashboard" labelIcon={<span>🏠</span>} href={`/${locale}/dashboard`} />
+        {!isClub && !isShop ? <UserButton.Link label="Match" labelIcon={<span>🔥</span>} href={`/${locale}/matches`} /> : null}
+        {!isClub && !isShop ? <UserButton.Link label="Kink Test" labelIcon={<span>🧪</span>} href={`/${locale}/kink-test`} /> : null}
+        {!isShop ? <UserButton.Link label="Eventos" labelIcon={<span>📅</span>} href={`/${locale}/events`} /> : null}
+        {!isClub ? <UserButton.Link label="Marketplace" labelIcon={<span>🛍️</span>} href={`/${locale}/shop`} /> : null}
+        <UserButton.Action label="manageAccount" />
+        <UserButton.Action label="signOut" />
+      </UserButton.MenuItems>
+    </UserButton>
+  )
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[rgba(11,7,8,0.85)] backdrop-blur-lg">
@@ -43,7 +61,7 @@ export function Navbar({ locale }: NavbarProps) {
           </nav>
           <ThemeToggle />
           {isSignedIn ? (
-            <UserButton />
+            userMenu
           ) : (
             <div className="flex items-center gap-2">
               <SignInButton>
@@ -75,7 +93,7 @@ export function Navbar({ locale }: NavbarProps) {
           <div className="mt-4 flex items-center gap-3">
             <ThemeToggle />
             {isSignedIn ? (
-              <UserButton />
+              userMenu
             ) : (
               <div className="flex flex-col gap-2">
                 <SignInButton>

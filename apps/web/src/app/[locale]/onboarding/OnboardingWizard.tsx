@@ -25,7 +25,7 @@ export default function OnboardingWizard() {
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [partner2Name, setPartner2Name] = useState('')
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [city, setCity] = useState('')
   const [error, setError] = useState('')
 
   const handleAccountTypeSelect = (type: AccountType) => {
@@ -70,15 +70,12 @@ export default function OnboardingWizard() {
       setLoading(true)
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const lat = Math.round(position.coords.latitude * 100) / 100
-          const lng = Math.round(position.coords.longitude * 100) / 100
-          setLocation({ lat, lng })
           setLoading(false)
           handleNextStep()
         },
         () => {
-          setError('Não conseguimos aceder à tua localização')
           setLoading(false)
+          handleNextStep()
         }
       )
     } else {
@@ -112,6 +109,17 @@ export default function OnboardingWizard() {
       })
 
       if (!res.ok) throw new Error('Failed to update user')
+
+      const trimmedCity = city.trim()
+      if (trimmedCity) {
+        const profileRes = await fetch('/api/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approxLocation: { city: trimmedCity } }),
+        })
+
+        if (!profileRes.ok) throw new Error('Failed to update location')
+      }
 
       // Redirect to next step
       if (accountType?.startsWith('COUPLE') || accountType === 'FEMALE_SINGLE' || accountType === 'MALE_SINGLE') {
@@ -269,8 +277,28 @@ export default function OnboardingWizard() {
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
             <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>A tua localização</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-              Para te mostrarmos pessoas perto de ti, precisamos da tua localização aproximada.
+              Podes escrever a tua cidade. Se deixares em branco, seguimos sem localização.
             </p>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <input
+                type="text"
+                placeholder="Ex: Lisboa"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                maxLength={80}
+                style={{
+                  padding: '0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '4px',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  fontSize: '1rem',
+                  width: '100%',
+                  maxWidth: '420px',
+                }}
+              />
+            </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button
@@ -286,7 +314,7 @@ export default function OnboardingWizard() {
                   opacity: loading ? 0.6 : 1,
                 }}
               >
-                {loading ? 'A processar...' : 'Permitir localização'}
+                {loading ? 'A processar...' : 'Usar localização automática'}
               </button>
               <button
                 onClick={() => handleLocationPermission(false)}

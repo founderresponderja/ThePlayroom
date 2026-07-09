@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, clubs, users, eq } from '@playroom/db'
+import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 const createClubSchema = z.object({
@@ -25,9 +26,13 @@ export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const userResult = await (db as any).execute(sql`
+    select id, account_type as "accountType"
+    from users
+    where clerk_user_id = ${userId}
+    limit 1
+  `)
+  const user = userResult?.[0] as { id: number; accountType: string } | undefined
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (user.accountType !== 'SWING_CLUB') {
     return NextResponse.json({ error: 'Only SWING_CLUB accounts can create clubs' }, { status: 403 })

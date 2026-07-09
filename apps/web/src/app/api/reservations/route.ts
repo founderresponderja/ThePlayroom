@@ -1,14 +1,13 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, reservations, users, events, eq, and } from '@playroom/db'
+import { db, reservations, events, eq, and } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function GET(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   // reservations has no createdAt — order by id desc
@@ -24,9 +23,7 @@ export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const { eventId } = (await req.json()) as { eventId: number }

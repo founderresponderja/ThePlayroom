@@ -2,14 +2,19 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, users, matches, eq, and } from '@playroom/db'
 import { notifyUser } from '@/lib/notifications'
+import { sql } from 'drizzle-orm'
 
 export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUserResult = await (db as any).execute(sql`
+    select id
+    from users
+    where clerk_user_id = ${userId}
+    limit 1
+  `)
+  const currentUser = currentUserResult?.[0] as { id: number } | undefined
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   // targetUserId is an integer (references users.id which is serial)

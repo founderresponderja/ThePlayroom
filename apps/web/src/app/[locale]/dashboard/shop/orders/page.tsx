@@ -1,7 +1,9 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { db, orderItems, orders, products, shops, users, eq } from '@playroom/db'
+import { db, orderItems, orders, products, shops, eq } from '@playroom/db'
 import { isAdmin } from '@/lib/admin'
+import { sql } from 'drizzle-orm'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 import ShopOrdersClient from './ShopOrdersClient'
 
 type SellerOrderRow = {
@@ -22,9 +24,7 @@ export default async function ShopOrdersPage({ params }: { params: { locale: str
   const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) redirect(`/${params.locale}/sign-in`)
 
   const admin = await isAdmin()
@@ -80,7 +80,13 @@ export default async function ShopOrdersPage({ params }: { params: { locale: str
         }
       }
 
-      const buyer = await db.query.users.findFirst({ where: eq(users.id, order.buyerUserId) })
+      const buyerResult = await (db as any).execute(sql`
+        select id, display_name as "displayName"
+        from users
+        where id = ${order.buyerUserId}
+        limit 1
+      `)
+      const buyer = buyerResult?.[0] as { id: number; displayName: string | null } | undefined
 
       const scopedItems = await db.query.orderItems.findMany({ where: eq(orderItems.orderId, order.id) })
       const filteredItems = scopedItems.filter((item) => sellerShopIds.includes(item.shopId))

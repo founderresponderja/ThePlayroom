@@ -1,7 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, reservations, events, users, eq } from '@playroom/db'
+import { db, reservations, events, eq } from '@playroom/db'
 import { notifyUser } from '@/lib/notifications'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function POST(
   _req: Request,
@@ -15,9 +16,7 @@ export async function POST(
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const reservation = await db.query.reservations.findFirst({

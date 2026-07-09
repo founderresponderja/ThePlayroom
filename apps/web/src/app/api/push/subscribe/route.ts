@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db, users, pushSubscriptions, eq, and } from '@playroom/db'
+import { db, pushSubscriptions, eq, and } from '@playroom/db'
 import { getValidClerkSession } from '@/lib/auth'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 const webPushPayloadSchema = z.object({
   endpoint: z.string().min(1),
@@ -32,9 +33,7 @@ export async function POST(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const parsedPayload = subscribePayloadSchema.safeParse(await req.json())
@@ -81,9 +80,7 @@ export async function DELETE(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const parsedPayload = unsubscribePayloadSchema.safeParse(await req.json())

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, users, threads, messages, eq, and, or } from '@playroom/db'
 import { z } from 'zod'
 import { getValidClerkSession } from '@/lib/auth'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 const sendMessageSchema = z.object({
   threadId: z.number().int().positive(),
@@ -12,9 +13,7 @@ export async function GET(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const { searchParams } = new URL(req.url)
@@ -49,9 +48,7 @@ export async function POST(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   let payload: z.infer<typeof sendMessageSchema>

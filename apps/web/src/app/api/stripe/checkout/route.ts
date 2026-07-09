@@ -1,7 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { stripe, PRICE_MAP } from '@/lib/stripe'
-import { db, users, subscriptions, eq } from '@playroom/db'
+import { db, subscriptions, eq } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function POST(req: Request) {
   const { userId } = await auth()
@@ -9,9 +10,7 @@ export async function POST(req: Request) {
 
   const { interval } = (await req.json()) as { interval: 'monthly' | 'annual' }
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const accountType = user.accountType ?? 'MALE_SINGLE'

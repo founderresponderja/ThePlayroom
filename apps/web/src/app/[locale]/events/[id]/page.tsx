@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { db, events, reservations, users, clubs, eq, and } from '@playroom/db'
+import { db, events, reservations, clubs, eq, and } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 import EventDetail from './EventDetail'
 
 export default async function EventDetailPage({
@@ -14,9 +15,7 @@ export default async function EventDetailPage({
   let userReservation = null
 
   if (userId) {
-    currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    })
+    currentUser = await getCurrentUserByClerkId(userId)
     if (currentUser) {
       userReservation = await db.query.reservations.findFirst({
         where: and(

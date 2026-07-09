@@ -1,7 +1,9 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, users, quizResults, eq, desc } from '@playroom/db'
+import { db, quizResults, eq, desc } from '@playroom/db'
 import { calculateCompatibility } from '@/lib/matching'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
+import { sql } from 'drizzle-orm'
 
 export async function GET(
   _req: Request,
@@ -10,17 +12,19 @@ export async function GET(
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId)
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (!currentUser.isVip) {
     return NextResponse.json({ error: 'VIP required' }, { status: 403 })
   }
 
-  const otherUser = await db.query.users.findFirst({
-    where: eq(users.id, Number(params.userId))
-  })
+  const otherUserResult = await (db as any).execute(sql`
+    select id
+    from users
+    where id = ${Number(params.userId)}
+    limit 1
+  `)
+  const otherUser = otherUserResult?.[0] as { id: number } | undefined
   if (!otherUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const currentQuiz = await db.query.quizResults.findFirst({

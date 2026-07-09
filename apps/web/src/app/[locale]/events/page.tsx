@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
-import { db, events, reservations, users, eq, gte, and, or } from '@playroom/db'
+import { db, events, reservations, eq, gte, and, or } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 import EventsList from './EventsList'
 
 export default async function EventsPage({ params }: { params: { locale: string } }) {
@@ -9,9 +10,7 @@ export default async function EventsPage({ params }: { params: { locale: string 
   let userReservationIds: number[] = []
 
   if (userId) {
-    currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    })
+    currentUser = await getCurrentUserByClerkId(userId)
     if (currentUser) {
       const userReservations = await db.query.reservations.findMany({
         where: eq(reservations.userId, currentUser.id),

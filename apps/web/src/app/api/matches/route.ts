@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, users, matches, photos, moderationStatusEnum, eq, and, or } from '@playroom/db'
 import { getValidClerkSession } from '@/lib/auth'
+import { sql } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUserResult = await (db as any).execute(sql`
+    select id, display_name as "displayName", account_type as "accountType"
+    from users
+    where clerk_user_id = ${userId}
+    limit 1
+  `)
+  const currentUser = currentUserResult?.[0] as { id: number; displayName: string | null; accountType: string | null } | undefined
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const mutualMatches = await db.query.matches.findMany({
@@ -25,9 +30,22 @@ export async function GET(req: NextRequest) {
     mutualMatches.map(async match => {
       const otherUserId = match.userAId === currentUser.id ? match.userBId : match.userAId
 
-      const otherUser = await db.query.users.findFirst({
-        where: eq(users.id, otherUserId),
-      })
+      const otherUserResult = await (db as any).execute(sql`
+        select
+          id,
+          display_name as "displayName",
+          account_type as "accountType",
+          verification_level as "verificationLevel"
+        from users
+        where id = ${otherUserId}
+        limit 1
+      `)
+      const otherUser = otherUserResult?.[0] as {
+        id: number
+        displayName: string | null
+        accountType: string | null
+        verificationLevel: string | null
+      } | undefined
 
       const primaryPhoto = await db.query.photos.findFirst({
         where: and(
@@ -46,7 +64,6 @@ export async function GET(req: NextRequest) {
           displayName: otherUser?.displayName ?? null,
           accountType: otherUser?.accountType ?? null,
           verificationLevel: otherUser?.verificationLevel ?? null,
-          publicKey: otherUser?.publicKey ?? null,
           primaryPhoto: primaryPhoto?.url ?? null,
         },
       }

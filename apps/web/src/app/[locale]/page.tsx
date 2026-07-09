@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { setRequestLocale } from 'next-intl/server'
+import { BackButton } from '../../components/BackButton'
 
 interface PageProps {
   params: {
@@ -51,7 +52,7 @@ export default function Page({ params }: PageProps) {
     { title: privacy('gdprTitle'), desc: privacy('gdprDesc') },
   ]
 
-  const trustBadges = ['🔒 E2E Encrypted', '✅ Verified profiles', '🍍 Lifestyle community']
+  const trustBadges = ['🔒 E2E Encrypted', '✅ Verified profiles', 'Lifestyle community']
   const faqItems = [
     { q: faq('q1'), a: faq('a1') },
     { q: faq('q2'), a: faq('a2') },
@@ -73,6 +74,16 @@ export default function Page({ params }: PageProps) {
           />
         </div>
         <div className="relative mx-auto max-w-7xl px-6 py-24 lg:py-32">
+          <div className="absolute right-8 top-10 hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface)]/70 p-3 shadow-xl backdrop-blur lg:block">
+            <Image
+              src="/brand/pineapple-app-icon.png"
+              alt="The Playroom pineapple icon"
+              width={132}
+              height={132}
+              className="h-[132px] w-[132px] rounded-[1.5rem]"
+              priority
+            />
+          </div>
           <div className="relative max-w-3xl space-y-6">
             <span className="inline-flex rounded-full bg-[var(--primary)] px-4 py-1 text-xs uppercase tracking-[0.3em] text-white">
               {hero('badge')}
@@ -90,6 +101,7 @@ export default function Page({ params }: PageProps) {
               <Link href={`/${params.locale}/sign-in`} className="btn-outline inline-flex items-center justify-center">
                 {nav('signIn')}
               </Link>
+              <BackButton />
             </div>
             <div className="mt-10 flex flex-wrap gap-3 text-sm text-[var(--text-muted)]">
               {trustBadges.map(badge => (

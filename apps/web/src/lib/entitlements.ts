@@ -1,4 +1,5 @@
 import { db, users, entitlements, eq, and } from '@playroom/db'
+import { sql } from 'drizzle-orm'
 
 export type Feature =
   | 'ai_matching'
@@ -23,9 +24,13 @@ const VIP_FEATURES: Feature[] = [
 const BUSINESS_FEATURES: Feature[] = ['reservation_management']
 
 export async function hasFeature(userId: number, feature: Feature): Promise<boolean> {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  })
+  const userResult = await (db as any).execute(sql`
+    select id, is_vip as "isVip"
+    from users
+    where id = ${userId}
+    limit 1
+  `)
+  const user = userResult?.[0] as { id: number; isVip: boolean | null } | undefined
   if (!user) return false
 
   // VIP features — gated by isVip flag (synced by Stripe webhook)
@@ -49,9 +54,13 @@ export async function hasFeature(userId: number, feature: Feature): Promise<bool
 }
 
 export async function getUserLimits(userId: number) {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  })
+  const userResult = await (db as any).execute(sql`
+    select id, is_vip as "isVip"
+    from users
+    where id = ${userId}
+    limit 1
+  `)
+  const user = userResult?.[0] as { id: number; isVip: boolean | null } | undefined
   const isVip = user?.isVip ?? false
 
   return {

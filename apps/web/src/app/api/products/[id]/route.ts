@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, products, shops, users, eq, and } from '@playroom/db'
+import { sql } from 'drizzle-orm'
 
 export async function GET(
   _req: Request,
@@ -25,9 +26,13 @@ export async function PATCH(
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const userResult = await (db as any).execute(sql`
+    select id
+    from users
+    where clerk_user_id = ${userId}
+    limit 1
+  `)
+  const user = userResult?.[0] as { id: number } | undefined
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const shop = await db.query.shops.findFirst({
@@ -68,7 +73,20 @@ export async function PATCH(
   const [updated] = await db.update(products)
     .set(updates)
     .where(eq(products.id, productId))
-    .returning()
+    .returning({
+      id: products.id,
+      shopId: products.shopId,
+      title: products.title,
+      description: products.description,
+      images: products.images,
+      priceCents: products.priceCents,
+      currency: products.currency,
+      category: products.category,
+      stock: products.stock,
+      ageRestricted: products.ageRestricted,
+      moderationStatus: products.moderationStatus,
+      active: products.active,
+    })
 
   return NextResponse.json(updated)
 }
@@ -80,9 +98,13 @@ export async function DELETE(
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const userResult = await (db as any).execute(sql`
+    select id
+    from users
+    where clerk_user_id = ${userId}
+    limit 1
+  `)
+  const user = userResult?.[0] as { id: number } | undefined
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const shop = await db.query.shops.findFirst({

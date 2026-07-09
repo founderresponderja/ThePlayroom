@@ -8,11 +8,21 @@ export default async function VerificationPage({ params }: { params: { locale: s
   const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
-  const userResult = await (db as any).execute(sql`select id, verification_level as "verificationLevel" from users where clerk_user_id = ${userId} limit 1`)
+  const userResult = await (db as any).execute(sql`
+    select id, verification_level as "verificationLevel"
+    from users
+    where clerk_user_id = ${userId}
+    limit 1
+  `)
   const user = userResult?.[0] as { id?: number; verificationLevel?: string } | undefined
   if (!user?.id) redirect(`/${params.locale}/sign-in`)
 
-  const userVerifications = await (db as any).execute(sql`select id, type, status from verifications where user_id = ${user.id} order by created_at desc`)
+  const userVerifications = await (db as any).execute(sql`
+    select id, type, status
+    from verifications
+    where user_id = ${user.id}
+    order by created_at desc
+  `)
   const verifications = (userVerifications ?? []).map((v: any) => ({
     id: v.id,
     type: v.type,

@@ -1,23 +1,20 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, eq, shops, users } from '@playroom/db'
+import { db, eq, shops } from '@playroom/db'
 import { stripe } from '@/lib/stripe'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function POST() {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (user.accountType !== 'SEX_SHOP') {
     return NextResponse.json({ error: 'Only SEX_SHOP accounts can onboard' }, { status: 403 })
   }
 
-  let shop = await db.query.shops.findFirst({
-    where: eq(shops.ownerUserId, user.id),
-  })
+  let shop = await db.query.shops.findFirst({ where: eq(shops.ownerUserId, user.id) })
 
   let stripeAccountId: string
 

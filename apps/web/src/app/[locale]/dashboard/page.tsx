@@ -60,27 +60,33 @@ export default async function DashboardPage({
   const verificationLabel = verificationLabels[user.verificationLevel ?? 'none'] ?? 'Não verificado'
   const subscriptionTierLabel = subscriptionTierLabels[user.subscriptionTier ?? 'free'] ?? (user.subscriptionTier ?? 'free')
 
+  const isClub = user.accountType === 'SWING_CLUB'
+  const isShop = user.accountType === 'SEX_SHOP'
+
   const navLinks = [
-    { href: `/${params.locale}/verification`, label: '✅ Verificar perfil' },
     { href: `/${params.locale}/profile`, label: '👤 O meu perfil' },
-    { href: `/${params.locale}/messages`, label: '💬 Mensagens' },
-    { href: `/${params.locale}/events`, label: '📅 Eventos' },
-    { href: `/${params.locale}/dashboard/orders`, label: '🧾 As Minhas Compras' },
+    ...(!isClub && !isShop ? [{ href: `/${params.locale}/matches`, label: '🔥 Matches' }] : []),
+    ...(!isShop ? [{ href: `/${params.locale}/events`, label: '📅 Eventos' }] : []),
+    ...(!isClub ? [{ href: `/${params.locale}/shop`, label: '🛍️ Marketplace' }] : []),
+    { href: `/${params.locale}/verification`, label: '✅ Verificar perfil' },
   ]
 
-  if (user.accountType === 'SWING_CLUB') {
+  if (!isClub && !isShop) {
+    navLinks.push({ href: `/${params.locale}/dashboard/orders`, label: '🧾 As Minhas Compras' })
+  }
+
+  if (isClub) {
     navLinks.push({ href: `/${params.locale}/club-setup`, label: '🏛️ Configurar clube' })
     navLinks.push({ href: `/${params.locale}/clubs`, label: '🏛️ Diretório de clubes' })
   }
 
-  if (user.accountType === 'SEX_SHOP') {
+  if (isShop) {
     navLinks.push({ href: `/${params.locale}/shop-setup`, label: '🛍️ Configurar loja' })
-    navLinks.push({ href: `/${params.locale}/shop`, label: '🛍️ Marketplace' })
     navLinks.push({ href: `/${params.locale}/dashboard/shop/orders`, label: '📦 Encomendas da Loja' })
   }
 
   navLinks.push({ href: `/${params.locale}/pricing`, label: '💎 Planos e subscrição' })
-  navLinks.push({ href: `/${params.locale}/admin`, label: '🔧 Admin' })
+  navLinks.push({ href: `/${params.locale}/admin`, label: '🔧 Configurações' })
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '2rem' }}>

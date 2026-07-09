@@ -1,7 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { db, orderItems, orders, products, users, eq } from '@playroom/db'
+import { db, orderItems, orders, products, eq } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
@@ -19,9 +20,7 @@ export default async function BuyerOrdersPage({ params }: { params: { locale: st
   const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
-  const buyer = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const buyer = await getCurrentUserByClerkId(userId)
   if (!buyer) redirect(`/${params.locale}/sign-in`)
 
   const buyerOrders = await db.query.orders.findMany({

@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { db, clubs, events, reservations, users, eq, and } from '@playroom/db'
+import { db, clubs, events, reservations, eq, and } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 import ClubProfile from './ClubProfile'
 
 export default async function ClubProfilePage({
@@ -39,9 +40,7 @@ export default async function ClubProfilePage({
   // Check if user has an accepted reservation for any club event
   let hasAcceptedReservation = false
   if (userId) {
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    })
+    const currentUser = await getCurrentUserByClerkId(userId)
     if (currentUser) {
       for (const evt of clubEvents) {
         const res = await db.query.reservations.findFirst({

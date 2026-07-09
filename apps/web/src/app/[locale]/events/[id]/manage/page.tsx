@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { db, events, reservations, users, eq, and } from '@playroom/db'
+import { db, events, reservations, eq, and } from '@playroom/db'
+import { sql } from 'drizzle-orm'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 import ManageEventClient from './ManageEventClient'
 
 export default async function ManageEventPage({
@@ -16,9 +18,7 @@ export default async function ManageEventPage({
   const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) redirect(`/${params.locale}/sign-in`)
 
   const event = await db.query.events.findFirst({
@@ -41,9 +41,13 @@ export default async function ManageEventPage({
 
   const pendingWithUsers = await Promise.all(
     pendingReservations.map(async (reservation) => {
-      const participant = await db.query.users.findFirst({
-        where: eq(users.id, reservation.userId),
-      })
+      const participantResult = await (db as any).execute(sql`
+        select id, display_name as "displayName"
+        from users
+        where id = ${reservation.userId}
+        limit 1
+      `)
+      const participant = participantResult?.[0] as { id: number; displayName: string | null } | undefined
 
       return {
         id: reservation.id,

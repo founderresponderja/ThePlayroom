@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, users, profiles, photos, matches, quizResults, moderationStatusEnum, eq, and, ne, notInArray, isNotNull, sql, gte, desc } from '@playroom/db'
 import { getValidClerkSession } from '@/lib/auth'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function GET(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (!currentUser.onboardingComplete) return NextResponse.json({ error: 'Onboarding required' }, { status: 403 })
 

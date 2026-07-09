@@ -1,7 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { db, orders, orderItems, products, shops, users, eq, and } from '@playroom/db'
+import { db, orders, orderItems, products, shops, eq, and } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 const PLATFORM_FEE_BPS = Number(process.env.MARKETPLACE_DEFAULT_COMMISSION_BPS ?? 1000)
 
@@ -9,9 +10,7 @@ export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const { orderId } = await req.json() as { orderId: number }

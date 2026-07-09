@@ -10,8 +10,8 @@ export default function SignInPage({ params }: SignInPageProps) {
       routing="path"
       path={`/${params.locale}/sign-in`}
       signUpUrl={`/${params.locale}/sign-up`}
-      forceRedirectUrl={`/${params.locale}/dashboard`}
-      fallbackRedirectUrl={`/${params.locale}/dashboard`}
+      forceRedirectUrl={`/${params.locale}/matches`}
+      fallbackRedirectUrl={`/${params.locale}/matches`}
     />
   )
 }

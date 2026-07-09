@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
-import { db, users, subscriptions, eq } from '@playroom/db'
+import { db, subscriptions, eq } from '@playroom/db'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 import PricingClient from './PricingClient'
 
 export default async function PricingPage({ params }: { params: { locale: string } }) {
@@ -9,9 +10,7 @@ export default async function PricingPage({ params }: { params: { locale: string
   let currentSub = null
 
   if (userId) {
-    currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    })
+    currentUser = await getCurrentUserByClerkId(userId)
     if (currentUser) {
       currentSub = await db.query.subscriptions.findFirst({
         where: eq(subscriptions.userId, currentUser.id),

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db, orderItems, orders, shops, users, orderStatusEnum, eq } from '@playroom/db'
+import { db, orderItems, orders, shops, orderStatusEnum, eq } from '@playroom/db'
 import { getValidClerkSession } from '@/lib/auth'
 import { isAdmin } from '@/lib/admin'
+import { getCurrentUserByClerkId } from '@/lib/current-user'
 
 const patchOrderSchema = z.object({
   status: z.enum(['shipped']),
@@ -45,9 +46,7 @@ export async function PATCH(
 
   const admin = await isAdmin()
   if (!admin) {
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    })
+    const currentUser = await getCurrentUserByClerkId(userId)
     if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const sellerShop = await db.query.shops.findFirst({

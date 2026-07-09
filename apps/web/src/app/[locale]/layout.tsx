@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react'
+import { auth } from '@clerk/nextjs/server'
 import { ClerkProvider } from '@clerk/nextjs'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
+import { db } from '@playroom/db'
+import { sql } from 'drizzle-orm'
 import { Navbar } from '../../components/Navbar'
 import { AgeGate } from '../../components/AgeGate'
 
@@ -48,10 +51,23 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   // propagation issues between clerkMiddleware and intlMiddleware.
   setRequestLocale(params.locale)
 
+  const { userId } = await auth()
+  const userResult = userId
+    ? await (db as any).execute(sql`
+        select
+          account_type as "accountType",
+          subscription_tier as "subscriptionTier"
+        from users
+        where clerk_user_id = ${userId}
+        limit 1
+      `)
+    : null
+  const currentUser = userResult?.[0] as { accountType?: string; subscriptionTier?: string | null } | undefined
+
   const messages = await getMessages()
   const signInUrl = `/${params.locale}/sign-in`
   const signUpUrl = `/${params.locale}/sign-up`
-  const postSignInUrl = `/${params.locale}/dashboard`
+  const postSignInUrl = `/${params.locale}/matches`
   const postSignUpUrl = `/${params.locale}/onboarding`
 
   return (
@@ -76,7 +92,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
           `,
           }}
         />
-        <Navbar locale={params.locale} />
+        <Navbar locale={params.locale} accountType={currentUser?.accountType ?? null} />
         <main>{children}</main>
         <AgeGate />
       </NextIntlClientProvider>
