@@ -1,7 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { db, users, eq } from '@playroom/db'
+import { db } from '@playroom/db'
+import { sql } from 'drizzle-orm'
 import PushWrapper from './PushWrapper'
 
 const accountTypeLabels: Record<string, string> = {
@@ -34,9 +35,25 @@ export default async function DashboardPage({
   const { userId } = await auth()
   if (!userId) redirect(`/${params.locale}/sign-in`)
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-  })
+  const userResult = await (db as any).execute(sql`
+    select
+      id,
+      account_type as "accountType",
+      verification_level as "verificationLevel",
+      subscription_tier as "subscriptionTier"
+    from users
+    where clerk_user_id = ${userId}
+    limit 1
+  `)
+  const user = userResult?.[0] as
+    | {
+        id: number
+        accountType: string
+        verificationLevel: string | null
+        subscriptionTier: string | null
+      }
+    | undefined
+
   if (!user) redirect(`/${params.locale}/onboarding`)
 
   const accountTypeLabel = accountTypeLabels[user.accountType] ?? user.accountType
