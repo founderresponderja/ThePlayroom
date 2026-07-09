@@ -16,7 +16,6 @@
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
     "jsx": "preserve",
-    "baseUrl": ".",
     "paths": {
       "@playroom/ui": ["packages/ui/src"],
       "@playroom/core": ["packages/core/src"],
