@@ -38,6 +38,12 @@ export default function KinkTest() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (fromOnboarding && accountTypeFallback) {
+      setAccountType(accountTypeFallback)
+      setLoading(false)
+      return
+    }
+
     const fetchUser = async () => {
       try {
         const res = await fetch('/api/users/me')
