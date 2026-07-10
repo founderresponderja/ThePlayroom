@@ -70,6 +70,7 @@ export const pushPlatformEnum = pgEnum('push_platform', [
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   clerkUserId: varchar('clerk_user_id', { length: 191 }).notNull().unique(),
+  adminRole: varchar('admin_role', { length: 32 }).notNull().default('none'),
   accountType: accountTypeEnum('account_type').notNull(),
   displayName: varchar('display_name', { length: 100 }).notNull(),
   dateOfBirth: timestamp('date_of_birth', { mode: 'date' }),

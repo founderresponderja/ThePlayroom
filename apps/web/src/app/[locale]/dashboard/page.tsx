@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { db } from '@playroom/db'
 import { sql } from 'drizzle-orm'
 import PushWrapper from './PushWrapper'
+import { isAdmin } from '@/lib/admin'
 
 const accountTypeLabels: Record<string, string> = {
   FEMALE_SINGLE: '👩 Single Feminina',
@@ -98,7 +99,10 @@ export default async function DashboardPage({
   }
 
   navLinks.push({ href: `/${params.locale}/pricing`, label: '💎 Planos e subscrição' })
-  navLinks.push({ href: `/${params.locale}/admin`, label: '🔧 Configurações' })
+  const admin = await isAdmin()
+  if (admin) {
+    navLinks.push({ href: `/${params.locale}/admin`, label: '🛡️ Painel de Administração' })
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '2rem' }}>

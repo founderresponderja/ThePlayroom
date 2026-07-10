@@ -10,6 +10,9 @@ type Metrics = {
   totalEvents: number
   totalReservations: number
   activeSubscriptions: number
+  pendingReports: number
+  totalAdmins: number
+  totalSuperAdmins: number
   conversionRate: number
 }
 
@@ -50,6 +53,9 @@ export default function AdminDashboard({
     { label: 'Eventos', value: metrics.totalEvents, icon: '📅' },
     { label: 'Reservas', value: metrics.totalReservations, icon: '🎟️' },
     { label: 'Subscrições activas', value: metrics.activeSubscriptions, icon: '💳' },
+    { label: 'Denúncias pendentes', value: metrics.pendingReports, icon: '🚨' },
+    { label: 'Administradores', value: metrics.totalAdmins, icon: '🛡️' },
+    { label: 'Super admins', value: metrics.totalSuperAdmins, icon: '👑' },
   ]
 
   const navItems = [

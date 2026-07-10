@@ -37,6 +37,15 @@ export default async function AdminPage({ params }: { params: { locale: string }
   const activeSubsResult = await (db as any).execute(sql`select count(*)::int as count from subscriptions where status = 'active'`)
   const activeSubscriptions = Number(activeSubsResult?.[0]?.count ?? 0)
 
+  const pendingReportsResult = await (db as any).execute(sql`select count(*)::int as count from reports where status in ('pending', 'open')`)
+  const pendingReports = Number(pendingReportsResult?.[0]?.count ?? 0)
+
+  const adminsResult = await (db as any).execute(sql`select count(*)::int as count from users where admin_role in ('admin', 'super_admin') and deleted_at is null`)
+  const totalAdmins = Number(adminsResult?.[0]?.count ?? 0)
+
+  const superAdminsResult = await (db as any).execute(sql`select count(*)::int as count from users where admin_role = 'super_admin' and deleted_at is null`)
+  const totalSuperAdmins = Number(superAdminsResult?.[0]?.count ?? 0)
+
   const usersByType = await (db as any).execute(sql`select account_type as "accountType", count(*)::int as count from users group by account_type`)
 
   return (
@@ -50,6 +59,9 @@ export default async function AdminPage({ params }: { params: { locale: string }
         totalEvents,
         totalReservations,
         activeSubscriptions,
+        pendingReports,
+        totalAdmins,
+        totalSuperAdmins,
         conversionRate: totalUsers > 0 ? Math.round((vipUsers / totalUsers) * 100) : 0,
       }}
       usersByType={usersByType.map((row: { accountType?: string | null; count: number }) => ({

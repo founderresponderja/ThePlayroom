@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { db, reports, users, eq } from '@playroom/db'
-import { isAdmin } from '@/lib/admin'
+import { getAdminContext } from '@/lib/admin'
+import { notifyAllAdminsByEmail } from '@/lib/admin-alerts'
 import { z } from 'zod'
 
 const idSchema = z.coerce.number().int().positive()
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const admin = await isAdmin()
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const admin = await getAdminContext()
+  if (!admin.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
     const parsedId = idSchema.safeParse(params.id)
@@ -45,6 +46,11 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       .update(reports)
       .set({ status: 'resolved' })
       .where(eq(reports.id, reportId))
+
+    await notifyAllAdminsByEmail({
+      subject: '[The Playroom] Denúncia com banimento executado',
+      text: `A denúncia #${reportId} resultou em banimento do utilizador #${report.targetId}, executado por admin #${admin.appUserId}.`,
+    })
 
     return NextResponse.json({ ok: true, bannedUserId: report.targetId, reportId, status: 'resolved' })
   } catch (error) {

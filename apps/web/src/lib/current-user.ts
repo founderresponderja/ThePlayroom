@@ -5,6 +5,7 @@ import { withDbRetry } from '@/lib/db-observability'
 export type CurrentUser = {
   id: number
   clerkUserId: string
+  adminRole: string
   accountType: string
   displayName: string
   verificationLevel: string | null
@@ -40,6 +41,7 @@ async function fetchCurrentUserByClerkId(clerkUserId: string) {
       select
         id,
         clerk_user_id as "clerkUserId",
+        admin_role as "adminRole",
         account_type as "accountType",
         display_name as "displayName",
         verification_level as "verificationLevel",
@@ -104,6 +106,7 @@ export async function ensureCurrentUserByClerkId(clerkUserId: string, seed: Ensu
       .returning({
         id: users.id,
         clerkUserId: users.clerkUserId,
+        adminRole: users.adminRole,
         accountType: users.accountType,
         displayName: users.displayName,
         verificationLevel: users.verificationLevel,
