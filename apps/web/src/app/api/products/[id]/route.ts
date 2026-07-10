@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, products, shops, users, eq, and } from '@playroom/db'
-import { sql } from 'drizzle-orm'
+import { db, products, shops, eq, and } from '@playroom/db'
+import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function GET(
   _req: Request,
@@ -26,13 +26,7 @@ export async function PATCH(
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userResult = await (db as any).execute(sql`
-    select id
-    from users
-    where clerk_user_id = ${userId}
-    limit 1
-  `)
-  const user = userResult?.[0] as { id: number } | undefined
+  const user = await ensureCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const shop = await db.query.shops.findFirst({
@@ -98,13 +92,7 @@ export async function DELETE(
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userResult = await (db as any).execute(sql`
-    select id
-    from users
-    where clerk_user_id = ${userId}
-    limit 1
-  `)
-  const user = userResult?.[0] as { id: number } | undefined
+  const user = await ensureCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const shop = await db.query.shops.findFirst({

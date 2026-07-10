@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db, events, users, eq, gte } from '@playroom/db'
-import { sql } from 'drizzle-orm'
+import { db, events, gte } from '@playroom/db'
 import { getValidClerkSession } from '@/lib/auth'
+import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function GET(_req: NextRequest) {
   const upcoming = await db.query.events.findMany({
@@ -17,13 +17,7 @@ export async function POST(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userResult = await (db as any).execute(sql`
-    select id, account_type as "accountType"
-    from users
-    where clerk_user_id = ${userId}
-    limit 1
-  `)
-  const user = userResult?.[0] as { id: number; accountType: string } | undefined
+  const user = await ensureCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const {

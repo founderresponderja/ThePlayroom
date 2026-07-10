@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, products, shops, users, eq, and } from '@playroom/db'
-import { sql } from 'drizzle-orm'
+import { db, products, shops, eq, and } from '@playroom/db'
+import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
 // GET — list all approved products (public storefront)
 export async function GET() {
@@ -22,13 +22,7 @@ export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userResult = await (db as any).execute(sql`
-    select id, account_type as "accountType"
-    from users
-    where clerk_user_id = ${userId}
-    limit 1
-  `)
-  const user = userResult?.[0] as { id: number; accountType: string } | undefined
+  const user = await ensureCurrentUserByClerkId(userId)
   if (!user || user.accountType !== 'SEX_SHOP') {
     return NextResponse.json({ error: 'Only SEX_SHOP accounts can create products' }, { status: 403 })
   }

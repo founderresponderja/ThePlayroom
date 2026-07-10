@@ -2,18 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, users, matches, photos, moderationStatusEnum, eq, and, or } from '@playroom/db'
 import { getValidClerkSession } from '@/lib/auth'
 import { sql } from 'drizzle-orm'
+import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function GET(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const currentUserResult = await (db as any).execute(sql`
-    select id, display_name as "displayName", account_type as "accountType"
-    from users
-    where clerk_user_id = ${userId}
-    limit 1
-  `)
-  const currentUser = currentUserResult?.[0] as { id: number; displayName: string | null; accountType: string | null } | undefined
+  const currentUser = await ensureCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const mutualMatches = await db.query.matches.findMany({

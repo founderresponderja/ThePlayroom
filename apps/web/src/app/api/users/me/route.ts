@@ -1,9 +1,9 @@
 import { clerkClient } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { accountTypeEnum, db, eq, users } from '@playroom/db'
-import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getValidClerkSession } from '@/lib/auth'
+import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
 const onboardingPayloadSchema = z.object({
   accountType: z.enum(accountTypeEnum.enumValues).optional(),
@@ -35,27 +35,7 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const userResult = await (db as any).execute(sql`
-      select
-        id,
-        clerk_user_id as "clerkUserId",
-        account_type as "accountType",
-        display_name as "displayName",
-        date_of_birth as "dateOfBirth",
-        age_verified_at as "ageVerifiedAt",
-        verification_level as "verificationLevel",
-        onboarding_complete as "onboardingComplete",
-        subscription_tier as "subscriptionTier",
-        is_vip as "isVip",
-        created_at as "createdAt",
-        updated_at as "updatedAt",
-        deleted_at as "deletedAt",
-        deleted_by as "deletedBy"
-      from users
-      where clerk_user_id = ${userId}
-      limit 1
-    `)
-    const user = userResult?.[0] as { id: number; [key: string]: any } | undefined
+    const user = await ensureCurrentUserByClerkId(userId)
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
@@ -93,6 +73,12 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const updatedAt = new Date().toISOString()
+    const currentUser = await ensureCurrentUserByClerkId(userId, {
+      accountType: payload.accountType,
+      displayName: payload.displayName,
+    })
+    if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
     const updates: Record<string, unknown> = { updatedAt }
 
     if (payload.accountType) updates.accountType = payload.accountType
@@ -104,7 +90,7 @@ export async function PATCH(req: NextRequest) {
     const updatedUsers = await db
       .update(users)
       .set(updates)
-      .where(eq(users.clerkUserId, userId))
+      .where(eq(users.id, currentUser.id))
       .returning({
         id: users.id,
         clerkUserId: users.clerkUserId,

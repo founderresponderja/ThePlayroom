@@ -1,20 +1,14 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, profiles, quizResults, users, eq, desc } from '@playroom/db'
-import { sql } from 'drizzle-orm'
 import { generateCouplePublicProfile } from '@/lib/ai-couple-profile'
+import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function PATCH(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userResult = await (db as any).execute(sql`
-    select id
-    from users
-    where clerk_user_id = ${userId}
-    limit 1
-  `)
-  const user = userResult?.[0] as { id: number } | undefined
+  const user = await ensureCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const body = (await req.json()) as {

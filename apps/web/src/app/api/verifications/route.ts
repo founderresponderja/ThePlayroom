@@ -1,14 +1,14 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { db, verifications, users } from '@playroom/db'
-import { eq, sql } from 'drizzle-orm'
+import { db, verifications } from '@playroom/db'
+import { sql } from 'drizzle-orm'
+import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
 export async function GET() {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userResult = await (db as any).execute(sql`select id from users where clerk_user_id = ${userId} limit 1`)
-  const user = userResult?.[0] as { id?: number } | undefined
+  const user = await ensureCurrentUserByClerkId(userId)
   if (!user?.id) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const rows = await (db as any).execute(sql`select id, user_id as "userId", type, status, reviewed_by as "reviewedBy", evidence_ref as "evidenceRef", reviewed_at as "reviewedAt", created_at as "createdAt" from verifications where user_id = ${user.id} order by created_at desc`)
@@ -20,8 +20,7 @@ export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userResult = await (db as any).execute(sql`select id from users where clerk_user_id = ${userId} limit 1`)
-  const user = userResult?.[0] as { id?: number } | undefined
+  const user = await ensureCurrentUserByClerkId(userId)
   if (!user?.id) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const { type, evidenceRef } = await req.json() as {
