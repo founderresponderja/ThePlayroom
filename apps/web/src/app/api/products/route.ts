@@ -2,17 +2,20 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, products, shops, eq, and } from '@playroom/db'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
+import { withDbRetry } from '@/lib/db-observability'
 
 // GET — list all approved products (public storefront)
 export async function GET() {
-  const allProducts = await db.query.products.findMany({
-    where: and(
-      eq(products.active, true),
-      eq(products.moderationStatus, 'approved'),
-    ),
-    orderBy: (p, { desc }) => [desc(p.id)],
-    limit: 50,
-  })
+  const allProducts = await withDbRetry('products.listApproved', () =>
+    db.query.products.findMany({
+      where: and(
+        eq(products.active, true),
+        eq(products.moderationStatus, 'approved'),
+      ),
+      orderBy: (p, { desc }) => [desc(p.id)],
+      limit: 50,
+    })
+  )
 
   return NextResponse.json(allProducts)
 }
@@ -27,9 +30,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Only SEX_SHOP accounts can create products' }, { status: 403 })
   }
 
-  const shop = await db.query.shops.findFirst({
-    where: eq(shops.ownerUserId, user.id),
-  })
+  const shop = await withDbRetry('products.findSellerShop', () =>
+    db.query.shops.findFirst({
+      where: eq(shops.ownerUserId, user.id),
+    })
+  )
   if (!shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 })
   if (!shop.payoutsEnabled) {
     return NextResponse.json({ error: 'Complete Stripe onboarding first' }, { status: 403 })
@@ -48,7 +53,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const [product] = await db.insert(products).values({
+  const insertValues: typeof products.$inferInsert = {
     shopId: shop.id,
     title: body.title,
     description: body.description ?? '',
@@ -60,7 +65,11 @@ export async function POST(req: Request) {
     ageRestricted: true,
     moderationStatus: 'pending',
     active: false,
-  }).returning()
+  }
+
+  const [product] = await withDbRetry('products.insert', () =>
+    db.insert(products).values(insertValues).returning()
+  )
 
   return NextResponse.json(product)
 }

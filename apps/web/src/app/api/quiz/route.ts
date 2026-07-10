@@ -4,6 +4,7 @@ import { calculateCompatibility } from '@/lib/matching'
 import { generateCouplePublicProfile } from '@/lib/ai-couple-profile'
 import { getValidClerkSession } from '@/lib/auth'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
+import { withDbRetry } from '@/lib/db-observability'
 
 function deriveTags(answers: Record<string, { rating: string; intensity?: number; role?: string }>) {
   const tags: string[] = []
@@ -50,10 +51,12 @@ export async function GET(req: NextRequest) {
   const user = await ensureCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const latestQuiz = await db.query.quizResults.findFirst({
-    where: eq(quizResults.userId, user.id),
-    orderBy: (q) => [desc(q.createdAt)],
-  })
+  const latestQuiz = await withDbRetry('quiz.getLatestByUser', () =>
+    db.query.quizResults.findFirst({
+      where: eq(quizResults.userId, user.id),
+      orderBy: (q) => [desc(q.createdAt)],
+    })
+  )
 
   const rawAnswers = normalizeObject(latestQuiz?.answers)
   const memberAnswers = normalizeObject(rawAnswers.memberAnswers)
@@ -93,7 +96,9 @@ export async function POST(req: NextRequest) {
       const member2Archetype = deriveArchetype(member2, accountTypeAtTime)
       const compatibility = calculateCompatibility(member1Tags, member2Tags)
 
-      const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, user.id) })
+      const profile = await withDbRetry('quiz.findProfile', () =>
+        db.query.profiles.findFirst({ where: eq(profiles.userId, user.id) })
+      )
       const existingPreferences = normalizeObject(profile?.preferences)
       const matchPreferences = normalizeObject(existingPreferences.matchPreferences)
       const members = normalizeObject(matchPreferences.members)
@@ -114,28 +119,30 @@ export async function POST(req: NextRequest) {
         ],
       })
 
-      await db.insert(quizResults).values({
-        userId: user.id,
-        quizVersion: '2.0',
-        accountTypeAtTime,
-        answers: {
-          memberAnswers: {
-            member1,
-            member2,
+      await withDbRetry('quiz.insertCoupleResult', () =>
+        db.insert(quizResults).values({
+          userId: user.id,
+          quizVersion: '2.0',
+          accountTypeAtTime,
+          answers: {
+            memberAnswers: {
+              member1,
+              member2,
+            },
+            memberArchetypes: {
+              member1: member1Archetype,
+              member2: member2Archetype,
+            },
+            coupleCompatibility: {
+              score: compatibility.score,
+              sharedTags: compatibility.sharedTags,
+              incompatible: compatibility.incompatible,
+            },
           },
-          memberArchetypes: {
-            member1: member1Archetype,
-            member2: member2Archetype,
-          },
-          coupleCompatibility: {
-            score: compatibility.score,
-            sharedTags: compatibility.sharedTags,
-            incompatible: compatibility.incompatible,
-          },
-        },
-        derivedTags: sharedTags,
-        archetype: `${member1Archetype} + ${member2Archetype}`,
-      })
+          derivedTags: sharedTags,
+          archetype: `${member1Archetype} + ${member2Archetype}`,
+        })
+      )
 
       const mergedPreferences = {
         ...existingPreferences,
@@ -153,14 +160,18 @@ export async function POST(req: NextRequest) {
       }
 
       if (profile) {
-        await db.update(profiles).set({ preferences: mergedPreferences }).where(eq(profiles.userId, user.id))
+        await withDbRetry('quiz.updateProfilePreferences', () =>
+          db.update(profiles).set({ preferences: mergedPreferences }).where(eq(profiles.userId, user.id))
+        )
       } else {
-        await db.insert(profiles).values({
-          userId: user.id,
-          bio: '',
-          interests: [],
-          preferences: mergedPreferences,
-        })
+        await withDbRetry('quiz.insertProfileForResult', () =>
+          db.insert(profiles).values({
+            userId: user.id,
+            bio: '',
+            interests: [],
+            preferences: mergedPreferences,
+          })
+        )
       }
 
       return NextResponse.json({
@@ -184,14 +195,16 @@ export async function POST(req: NextRequest) {
     const derivedTags = deriveTags(normalizedAnswers)
     const archetype = deriveArchetype(normalizedAnswers, accountTypeAtTime)
 
-    await db.insert(quizResults).values({
-      userId: user.id,
-      quizVersion: '2.0',
-      accountTypeAtTime,
-      answers: normalizedAnswers,
-      derivedTags,
-      archetype,
-    })
+    await withDbRetry('quiz.insertSingleResult', () =>
+      db.insert(quizResults).values({
+        userId: user.id,
+        quizVersion: '2.0',
+        accountTypeAtTime,
+        answers: normalizedAnswers,
+        derivedTags,
+        archetype,
+      })
+    )
 
     return NextResponse.json({ derivedTags, archetype })
   } catch (error) {

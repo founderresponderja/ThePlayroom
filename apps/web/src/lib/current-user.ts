@@ -1,5 +1,6 @@
 import { accountTypeEnum, db, users, eq } from '@playroom/db'
 import { sql } from 'drizzle-orm'
+import { withDbRetry } from '@/lib/db-observability'
 
 export type CurrentUser = {
   id: number
@@ -34,20 +35,22 @@ function normalizeDisplayName(displayName?: string | null) {
 }
 
 async function fetchCurrentUserByClerkId(clerkUserId: string) {
-  const rows = await (db as any).execute(sql`
-    select
-      id,
-      clerk_user_id as "clerkUserId",
-      account_type as "accountType",
-      display_name as "displayName",
-      verification_level as "verificationLevel",
-      onboarding_complete as "onboardingComplete",
-      subscription_tier as "subscriptionTier"
-      , is_vip as "isVip"
-    from users
-    where clerk_user_id = ${clerkUserId}
-    limit 1
-  `)
+  const rows = await withDbRetry<CurrentUser[]>('currentUser.fetchByClerkId', () =>
+    (db as any).execute(sql`
+      select
+        id,
+        clerk_user_id as "clerkUserId",
+        account_type as "accountType",
+        display_name as "displayName",
+        verification_level as "verificationLevel",
+        onboarding_complete as "onboardingComplete",
+        subscription_tier as "subscriptionTier"
+        , is_vip as "isVip"
+      from users
+      where clerk_user_id = ${clerkUserId}
+      limit 1
+    `)
+  )
 
   return rows?.[0] as CurrentUser | undefined
 }
@@ -57,21 +60,23 @@ export async function ensureCurrentUserByClerkId(clerkUserId: string, seed: Ensu
   if (existing) return existing
 
   const now = new Date().toISOString()
-  await db
-    .insert(users)
-    .values({
-      clerkUserId,
-      accountType: normalizeAccountType(seed.accountType),
-      displayName: normalizeDisplayName(seed.displayName),
-      onboardingComplete: false,
-      verificationLevel: 'none',
-      subscriptionTier: 'free',
-      isVip: false,
-      updatedAt: now,
-      deletedAt: null,
-      deletedBy: null,
-    })
-    .onConflictDoNothing({ target: users.clerkUserId })
+  await withDbRetry('currentUser.insertIfMissing', () =>
+    db
+      .insert(users)
+      .values({
+        clerkUserId,
+        accountType: normalizeAccountType(seed.accountType),
+        displayName: normalizeDisplayName(seed.displayName),
+        onboardingComplete: false,
+        verificationLevel: 'none',
+        subscriptionTier: 'free',
+        isVip: false,
+        updatedAt: now,
+        deletedAt: null,
+        deletedBy: null,
+      })
+      .onConflictDoNothing({ target: users.clerkUserId })
+  )
 
   const inserted = await fetchCurrentUserByClerkId(clerkUserId)
   if (!inserted) return undefined
@@ -91,20 +96,22 @@ export async function ensureCurrentUserByClerkId(clerkUserId: string, seed: Ensu
     return inserted
   }
 
-  const [updated] = await db
-    .update(users)
-    .set({ ...patch, updatedAt: now })
-    .where(eq(users.id, inserted.id))
-    .returning({
-      id: users.id,
-      clerkUserId: users.clerkUserId,
-      accountType: users.accountType,
-      displayName: users.displayName,
-      verificationLevel: users.verificationLevel,
-      onboardingComplete: users.onboardingComplete,
-      subscriptionTier: users.subscriptionTier,
-      isVip: users.isVip,
-    })
+  const [updated] = await withDbRetry('currentUser.patchSeedFields', () =>
+    db
+      .update(users)
+      .set({ ...patch, updatedAt: now })
+      .where(eq(users.id, inserted.id))
+      .returning({
+        id: users.id,
+        clerkUserId: users.clerkUserId,
+        accountType: users.accountType,
+        displayName: users.displayName,
+        verificationLevel: users.verificationLevel,
+        onboardingComplete: users.onboardingComplete,
+        subscriptionTier: users.subscriptionTier,
+        isVip: users.isVip,
+      })
+  )
 
   return (updated as CurrentUser | undefined) ?? inserted
 }

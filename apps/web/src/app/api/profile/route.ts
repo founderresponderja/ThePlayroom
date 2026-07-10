@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, profiles, quizResults, users, eq, desc } from '@playroom/db'
 import { generateCouplePublicProfile } from '@/lib/ai-couple-profile'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
+import { withDbRetry } from '@/lib/db-observability'
 
 export async function PATCH(req: Request) {
   const { userId } = await auth()
@@ -19,9 +20,11 @@ export async function PATCH(req: Request) {
   }
   const approxLocation = normalizeApproxLocation(body.approxLocation)
 
-  const existing = await db.query.profiles.findFirst({
-    where: eq(profiles.userId, user.id),
-  })
+  const existing = await withDbRetry('profile.findByUserId', () =>
+    db.query.profiles.findFirst({
+      where: eq(profiles.userId, user.id),
+    })
+  )
 
   if (existing) {
     // profiles has no updatedAt column — omit it
@@ -30,32 +33,36 @@ export async function PATCH(req: Request) {
       ...normalizeObject(body.preferences),
     }
 
-    const updated = await db
-      .update(profiles)
-      .set({
-        bio: body.bio ?? existing.bio,
-        interests: body.interests ?? existing.interests,
-        approxLocation: approxLocation ?? existing.approxLocation,
-        preferences: mergedPreferences,
-      })
-      .where(eq(profiles.userId, user.id))
-      .returning()
+    const updated = await withDbRetry('profile.update', () =>
+      db
+        .update(profiles)
+        .set({
+          bio: body.bio ?? existing.bio,
+          interests: body.interests ?? existing.interests,
+          approxLocation: approxLocation ?? existing.approxLocation,
+          preferences: mergedPreferences,
+        })
+        .where(eq(profiles.userId, user.id))
+        .returning()
+    )
 
     const updatedProfile = updated[0] ?? null
     const enrichedProfile = await maybeRefreshCouplePublicProfile(user.id, updatedProfile)
     return NextResponse.json(enrichedProfile)
   } else {
     // bio is text().notNull() — pass empty string fallback, never null
-    const created = await db
-      .insert(profiles)
-      .values({
-        userId: user.id,
-        bio: body.bio ?? '',
-        interests: body.interests ?? [],
-        approxLocation,
-        preferences: normalizeObject(body.preferences),
-      })
-      .returning()
+    const created = await withDbRetry('profile.insert', () =>
+      db
+        .insert(profiles)
+        .values({
+          userId: user.id,
+          bio: body.bio ?? '',
+          interests: body.interests ?? [],
+          approxLocation,
+          preferences: normalizeObject(body.preferences),
+        })
+        .returning()
+    )
 
     const createdProfile = created[0] ?? null
     const enrichedProfile = await maybeRefreshCouplePublicProfile(user.id, createdProfile)
@@ -83,19 +90,23 @@ function normalizeUnknownObject(value: unknown) {
 async function maybeRefreshCouplePublicProfile(userId: number, profile: any) {
   if (!profile) return profile
 
-  const userResult = await db
-    .select({ accountType: users.accountType })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1)
+  const userResult = await withDbRetry('profile.readUserAccountType', () =>
+    db
+      .select({ accountType: users.accountType })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+  )
   const user = userResult[0]
 
   if (!user?.accountType?.startsWith('COUPLE_')) return profile
 
-  const latestQuiz = await db.query.quizResults.findFirst({
-    where: eq(quizResults.userId, userId),
-    orderBy: (q) => [desc(q.createdAt)],
-  })
+  const latestQuiz = await withDbRetry('profile.findLatestQuiz', () =>
+    db.query.quizResults.findFirst({
+      where: eq(quizResults.userId, userId),
+      orderBy: (q) => [desc(q.createdAt)],
+    })
+  )
 
   if (!latestQuiz) return profile
 
@@ -120,11 +131,13 @@ async function maybeRefreshCouplePublicProfile(userId: number, profile: any) {
     couplePublicProfile: generatedCoupleProfile,
   }
 
-  const updated = await db
-    .update(profiles)
-    .set({ preferences: mergedPreferences })
-    .where(eq(profiles.userId, userId))
-    .returning()
+  const updated = await withDbRetry('profile.refreshCouplePublicProfile', () =>
+    db
+      .update(profiles)
+      .set({ preferences: mergedPreferences })
+      .where(eq(profiles.userId, userId))
+      .returning()
+  )
 
   return updated[0] ?? profile
 }

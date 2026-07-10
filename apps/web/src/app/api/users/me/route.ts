@@ -4,6 +4,7 @@ import { accountTypeEnum, db, eq, users } from '@playroom/db'
 import { z } from 'zod'
 import { getValidClerkSession } from '@/lib/auth'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
+import { withDbRetry } from '@/lib/db-observability'
 
 const onboardingPayloadSchema = z.object({
   accountType: z.enum(accountTypeEnum.enumValues).optional(),
@@ -87,26 +88,28 @@ export async function PATCH(req: NextRequest) {
     if (payload.ageVerifiedAt) updates.ageVerifiedAt = payload.ageVerifiedAt
     if (typeof payload.onboardingComplete === 'boolean') updates.onboardingComplete = payload.onboardingComplete
 
-    const updatedUsers = await db
-      .update(users)
-      .set(updates)
-      .where(eq(users.id, currentUser.id))
-      .returning({
-        id: users.id,
-        clerkUserId: users.clerkUserId,
-        accountType: users.accountType,
-        displayName: users.displayName,
-        dateOfBirth: users.dateOfBirth,
-        ageVerifiedAt: users.ageVerifiedAt,
-        verificationLevel: users.verificationLevel,
-        onboardingComplete: users.onboardingComplete,
-        subscriptionTier: users.subscriptionTier,
-        isVip: users.isVip,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-        deletedAt: users.deletedAt,
-        deletedBy: users.deletedBy,
-      })
+    const updatedUsers = await withDbRetry('usersMe.update', () =>
+      db
+        .update(users)
+        .set(updates)
+        .where(eq(users.id, currentUser.id))
+        .returning({
+          id: users.id,
+          clerkUserId: users.clerkUserId,
+          accountType: users.accountType,
+          displayName: users.displayName,
+          dateOfBirth: users.dateOfBirth,
+          ageVerifiedAt: users.ageVerifiedAt,
+          verificationLevel: users.verificationLevel,
+          onboardingComplete: users.onboardingComplete,
+          subscriptionTier: users.subscriptionTier,
+          isVip: users.isVip,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+          deletedAt: users.deletedAt,
+          deletedBy: users.deletedBy,
+        })
+    )
 
     const user = updatedUsers[0]
 

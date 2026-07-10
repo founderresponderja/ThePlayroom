@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, clubs, eq } from '@playroom/db'
 import { z } from 'zod'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
+import { withDbRetry } from '@/lib/db-observability'
 
 const createClubSchema = z.object({
   name: z.string().trim().min(2).max(200),
@@ -15,10 +16,12 @@ const createClubSchema = z.object({
 
 export async function GET() {
   // clubs has no createdAt — order by id desc
-  const allClubs = await db.query.clubs.findMany({
-    where: eq(clubs.verified, true),
-    orderBy: (c, { desc }) => [desc(c.id)],
-  })
+  const allClubs = await withDbRetry('clubs.listVerified', () =>
+    db.query.clubs.findMany({
+      where: eq(clubs.verified, true),
+      orderBy: (c, { desc }) => [desc(c.id)],
+    })
+  )
   return NextResponse.json(allClubs)
 }
 
@@ -57,20 +60,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'lat and lng must be provided together' }, { status: 400 })
   }
 
-  const [club] = await db
-    .insert(clubs)
-    .values({
-      ownerUserId: user.id,
-      name: payload.name,
-      // description is notNull with default '' — pass undefined (not null) to use DB default
-      description: payload.description,
-      address:     payload.address ?? null,
-      // clubs schema stores coordinates inside the jsonb 'location' column (no separate lat/lng)
-      location:    payload.lat != null && payload.lng != null ? { lat: payload.lat, lng: payload.lng } : null,
-      amenities:   payload.amenities ?? [],
-      verified:    false,
-    })
-    .returning()
+  const [club] = await withDbRetry('clubs.insert', () =>
+    db
+      .insert(clubs)
+      .values({
+        ownerUserId: user.id,
+        name: payload.name,
+        // description is notNull with default '' — pass undefined (not null) to use DB default
+        description: payload.description,
+        address: payload.address ?? null,
+        // clubs schema stores coordinates inside the jsonb 'location' column (no separate lat/lng)
+        location: payload.lat != null && payload.lng != null ? { lat: payload.lat, lng: payload.lng } : null,
+        amenities: payload.amenities ?? [],
+        verified: false,
+      })
+      .returning()
+  )
 
   return NextResponse.json(club)
 }

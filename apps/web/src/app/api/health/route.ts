@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db, sql } from '@playroom/db'
+import { getDbObservabilitySnapshot } from '@/lib/db-observability'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +48,7 @@ export async function GET() {
   }
 
   const status = allEnvConfigured && database.reachable ? 'ok' : 'error'
+  const dbObservability = getDbObservabilitySnapshot()
 
   return NextResponse.json(
     {
@@ -55,6 +57,7 @@ export async function GET() {
       subsystems: {
         database,
         environment: requiredEnv,
+        dbObservability,
       },
     },
     {

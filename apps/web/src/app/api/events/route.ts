@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, events, gte } from '@playroom/db'
 import { getValidClerkSession } from '@/lib/auth'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
+import { withDbRetry } from '@/lib/db-observability'
 
 export async function GET(_req: NextRequest) {
-  const upcoming = await db.query.events.findMany({
-    // startsAt is timestamp({ mode: 'string' }) — compare with ISO string
-    where: gte(events.startsAt, new Date().toISOString()),
-    orderBy: (e, { asc }) => [asc(e.startsAt)],
-    limit: 20,
-  })
+  const upcoming = await withDbRetry('events.listUpcoming', () =>
+    db.query.events.findMany({
+      // startsAt is timestamp({ mode: 'string' }) — compare with ISO string
+      where: gte(events.startsAt, new Date().toISOString()),
+      orderBy: (e, { asc }) => [asc(e.startsAt)],
+      limit: 20,
+    })
+  )
   return NextResponse.json(upcoming)
 }
 
@@ -44,28 +47,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const [event] = await db
-    .insert(events)
-    .values({
-      creatorType: user.accountType === 'SWING_CLUB' ? 'club' : 'user',
-      creatorId:   user.id,
-      clubId:      clubId ?? null,
-      title,
-      // description is notNull with default '' — pass undefined (not null) to use DB default
-      description: description,
-      startsAt,
-      endsAt:      endsAt ?? null,
-      locationMode: locationMode ?? 'custom',
-      // events schema stores coordinates in jsonb 'customLocation' (no separate lat/lng/address cols)
-      customLocation: (customLat != null || customLng != null || customAddress != null)
-        ? { lat: customLat ?? null, lng: customLng ?? null, address: customAddress ?? null }
-        : null,
-      capacity:   capacity ?? null,
-      privacy:    privacy ?? 'public',
-      ticketed:   ticketed ?? false,
-      priceCents: priceCents ?? null,
-    })
-    .returning()
+  const [event] = await withDbRetry('events.insert', () =>
+    db
+      .insert(events)
+      .values({
+        creatorType: user.accountType === 'SWING_CLUB' ? 'club' : 'user',
+        creatorId: user.id,
+        clubId: clubId ?? null,
+        title,
+        // description is notNull with default '' — pass undefined (not null) to use DB default
+        description: description,
+        startsAt,
+        endsAt: endsAt ?? null,
+        locationMode: locationMode ?? 'custom',
+        // events schema stores coordinates in jsonb 'customLocation' (no separate lat/lng/address cols)
+        customLocation: (customLat != null || customLng != null || customAddress != null)
+          ? { lat: customLat ?? null, lng: customLng ?? null, address: customAddress ?? null }
+          : null,
+        capacity: capacity ?? null,
+        privacy: privacy ?? 'public',
+        ticketed: ticketed ?? false,
+        priceCents: priceCents ?? null,
+      })
+      .returning()
+  )
 
   return NextResponse.json(event)
 }

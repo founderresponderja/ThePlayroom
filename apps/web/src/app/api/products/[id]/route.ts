@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, products, shops, eq, and } from '@playroom/db'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
+import { withDbRetry } from '@/lib/db-observability'
 
 export async function GET(
   _req: Request,
@@ -12,9 +13,11 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid product id' }, { status: 400 })
   }
 
-  const product = await db.query.products.findFirst({
-    where: eq(products.id, productId),
-  })
+  const product = await withDbRetry('products.getById', () =>
+    db.query.products.findFirst({
+      where: eq(products.id, productId),
+    })
+  )
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
   return NextResponse.json(product)
 }
@@ -29,9 +32,11 @@ export async function PATCH(
   const user = await ensureCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const shop = await db.query.shops.findFirst({
-    where: eq(shops.ownerUserId, user.id),
-  })
+  const shop = await withDbRetry('products.findOwnShopForPatch', () =>
+    db.query.shops.findFirst({
+      where: eq(shops.ownerUserId, user.id),
+    })
+  )
   if (!shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 })
 
   const productId = Number(params.id)
@@ -39,12 +44,14 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid product id' }, { status: 400 })
   }
 
-  const product = await db.query.products.findFirst({
-    where: and(
-      eq(products.id, productId),
-      eq(products.shopId, shop.id),
-    ),
-  })
+  const product = await withDbRetry('products.findOwnedProductForPatch', () =>
+    db.query.products.findFirst({
+      where: and(
+        eq(products.id, productId),
+        eq(products.shopId, shop.id),
+      ),
+    })
+  )
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
   const body = await req.json() as Partial<{
@@ -64,23 +71,25 @@ export async function PATCH(
   if (typeof body.stock === 'number') updates.stock = body.stock
   if (typeof body.active === 'boolean') updates.active = body.active
 
-  const [updated] = await db.update(products)
-    .set(updates)
-    .where(eq(products.id, productId))
-    .returning({
-      id: products.id,
-      shopId: products.shopId,
-      title: products.title,
-      description: products.description,
-      images: products.images,
-      priceCents: products.priceCents,
-      currency: products.currency,
-      category: products.category,
-      stock: products.stock,
-      ageRestricted: products.ageRestricted,
-      moderationStatus: products.moderationStatus,
-      active: products.active,
-    })
+  const [updated] = await withDbRetry('products.update', () =>
+    db.update(products)
+      .set(updates)
+      .where(eq(products.id, productId))
+      .returning({
+        id: products.id,
+        shopId: products.shopId,
+        title: products.title,
+        description: products.description,
+        images: products.images,
+        priceCents: products.priceCents,
+        currency: products.currency,
+        category: products.category,
+        stock: products.stock,
+        ageRestricted: products.ageRestricted,
+        moderationStatus: products.moderationStatus,
+        active: products.active,
+      })
+  )
 
   return NextResponse.json(updated)
 }
@@ -95,9 +104,11 @@ export async function DELETE(
   const user = await ensureCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const shop = await db.query.shops.findFirst({
-    where: eq(shops.ownerUserId, user.id),
-  })
+  const shop = await withDbRetry('products.findOwnShopForDelete', () =>
+    db.query.shops.findFirst({
+      where: eq(shops.ownerUserId, user.id),
+    })
+  )
   if (!shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 })
 
   const productId = Number(params.id)
@@ -105,12 +116,14 @@ export async function DELETE(
     return NextResponse.json({ error: 'Invalid product id' }, { status: 400 })
   }
 
-  await db.update(products)
-    .set({ active: false })
-    .where(and(
-      eq(products.id, productId),
-      eq(products.shopId, shop.id),
-    ))
+  await withDbRetry('products.softDelete', () =>
+    db.update(products)
+      .set({ active: false })
+      .where(and(
+        eq(products.id, productId),
+        eq(products.shopId, shop.id),
+      ))
+  )
 
   return NextResponse.json({ success: true })
 }

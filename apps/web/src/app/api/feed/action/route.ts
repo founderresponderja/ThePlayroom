@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, matches, eq, and } from '@playroom/db'
 import { notifyUser } from '@/lib/notifications'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
+import { withDbRetry } from '@/lib/db-observability'
 
 export async function POST(req: Request) {
   const { userId } = await auth()
@@ -21,37 +22,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  await db
-    .insert(matches)
-    .values({
-      userAId: currentUser.id,
-      userBId: targetUserId,
-      algo: 'random',
-      status: action === 'like' ? 'pending' : 'rejected',
-    })
-    .onConflictDoNothing()
+  await withDbRetry('feedAction.insertMatch', () =>
+    db
+      .insert(matches)
+      .values({
+        userAId: currentUser.id,
+        userBId: targetUserId,
+        algo: 'random',
+        status: action === 'like' ? 'pending' : 'rejected',
+      })
+      .onConflictDoNothing()
+  )
 
   let isMutualMatch = false
 
   if (action === 'like') {
-    const theyLikedUs = await db.query.matches.findFirst({
-      where: and(
-        eq(matches.userAId, targetUserId),
-        eq(matches.userBId, currentUser.id),
-        eq(matches.status, 'pending'),
-      ),
-    })
+    const theyLikedUs = await withDbRetry('feedAction.findReciprocalLike', () =>
+      db.query.matches.findFirst({
+        where: and(
+          eq(matches.userAId, targetUserId),
+          eq(matches.userBId, currentUser.id),
+          eq(matches.status, 'pending'),
+        ),
+      })
+    )
 
     if (theyLikedUs) {
-      await db
-        .update(matches)
-        .set({ status: 'matched' })
-        .where(and(eq(matches.userAId, currentUser.id), eq(matches.userBId, targetUserId)))
+      await withDbRetry('feedAction.markMatchedForward', () =>
+        db
+          .update(matches)
+          .set({ status: 'matched' })
+          .where(and(eq(matches.userAId, currentUser.id), eq(matches.userBId, targetUserId)))
+      )
 
-      await db
-        .update(matches)
-        .set({ status: 'matched' })
-        .where(and(eq(matches.userAId, targetUserId), eq(matches.userBId, currentUser.id)))
+      await withDbRetry('feedAction.markMatchedReverse', () =>
+        db
+          .update(matches)
+          .set({ status: 'matched' })
+          .where(and(eq(matches.userAId, targetUserId), eq(matches.userBId, currentUser.id)))
+      )
 
       isMutualMatch = true
 
