@@ -16,6 +16,15 @@ export default clerkMiddleware(async (auth, req) => {
   await auth()
 
   const { pathname, search } = req.nextUrl
+  const host = (req.headers.get('host') ?? '').toLowerCase()
+
+  // Keep all user traffic on a single canonical host so session cookies stay consistent.
+  if (host === 'theplayroom.pt') {
+    const url = req.nextUrl.clone()
+    url.protocol = 'https'
+    url.hostname = 'www.theplayroom.pt'
+    return NextResponse.redirect(url, 308)
+  }
 
   if (pathname === '/sso-callback') {
     const url = req.nextUrl.clone()

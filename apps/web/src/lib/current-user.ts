@@ -41,6 +41,21 @@ function isMissingAdminRoleColumnError(error: unknown) {
   return candidate.code === '42703' && /admin_role/i.test(candidate.message ?? '')
 }
 
+let ensuredAdminRoleColumn = false
+
+async function ensureAdminRoleColumnExists() {
+  if (ensuredAdminRoleColumn) return
+
+  await withDbRetry('currentUser.ensureAdminRoleColumn', () =>
+    (db as any).execute(sql`
+      alter table users
+      add column if not exists admin_role text not null default 'none'
+    `)
+  )
+
+  ensuredAdminRoleColumn = true
+}
+
 async function fetchCurrentUserByClerkId(clerkUserId: string) {
   try {
     const rows = await withDbRetry<CurrentUser[]>('currentUser.fetchByClerkId', () =>
@@ -67,7 +82,31 @@ async function fetchCurrentUserByClerkId(clerkUserId: string) {
       throw error
     }
 
-    const rows = await withDbRetry<Omit<CurrentUser, 'adminRole'>[]>(
+    await ensureAdminRoleColumnExists()
+
+    const rowsAfterSchemaFix = await withDbRetry<CurrentUser[]>('currentUser.fetchByClerkId.afterAutoSchemaFix', () =>
+      (db as any).execute(sql`
+        select
+          id,
+          clerk_user_id as "clerkUserId",
+          admin_role as "adminRole",
+          account_type as "accountType",
+          display_name as "displayName",
+          verification_level as "verificationLevel",
+          onboarding_complete as "onboardingComplete",
+          subscription_tier as "subscriptionTier"
+          , is_vip as "isVip"
+        from users
+        where clerk_user_id = ${clerkUserId}
+        limit 1
+      `)
+    )
+
+    if (rowsAfterSchemaFix?.[0]) {
+      return rowsAfterSchemaFix[0] as CurrentUser
+    }
+
+    const rowsWithoutAdminRole = await withDbRetry<Omit<CurrentUser, 'adminRole'>[]>(
       'currentUser.fetchByClerkId.noAdminRoleFallback',
       () =>
         (db as any).execute(sql`
@@ -86,7 +125,7 @@ async function fetchCurrentUserByClerkId(clerkUserId: string) {
         `)
     )
 
-    const fallback = rows?.[0]
+    const fallback = rowsWithoutAdminRole?.[0]
     return fallback ? ({ ...fallback, adminRole: 'none' } as CurrentUser) : undefined
   }
 }
