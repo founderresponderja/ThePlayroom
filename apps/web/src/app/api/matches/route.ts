@@ -4,6 +4,8 @@ import { getValidClerkSession } from '@/lib/auth'
 import { sql } from 'drizzle-orm'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

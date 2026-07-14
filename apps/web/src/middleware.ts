@@ -41,6 +41,7 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   matcher: [
     '/',
+    '/api/:path*',
     '/sso-callback',
     '/(pt|en|es)/:path*',
     '/((?!api|trpc|_next|_vercel|.*\\..*).*)',

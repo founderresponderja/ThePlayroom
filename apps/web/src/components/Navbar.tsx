@@ -7,7 +7,7 @@ import { ThemeToggle } from './ThemeToggle'
 
 interface NavbarProps {
   locale: string
-  accountType: string | null
+  accountType?: string | null
 }
 
 const locales = [
@@ -16,7 +16,7 @@ const locales = [
   { code: 'es', label: 'ES' },
 ]
 
-export function Navbar({ locale, accountType }: NavbarProps) {
+export function Navbar({ locale, accountType = null }: NavbarProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const { isSignedIn } = useUser()

@@ -1,11 +1,8 @@
 import type { ReactNode } from 'react'
-import { auth } from '@clerk/nextjs/server'
 import { ClerkProvider } from '@clerk/nextjs'
+import type { AbstractIntlMessages } from 'next-intl'
 import { NextIntlClientProvider } from 'next-intl'
-import { getMessages, setRequestLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
-import { db } from '@playroom/db'
-import { sql } from 'drizzle-orm'
 import { Navbar } from '../../components/Navbar'
 import { AgeGate } from '../../components/AgeGate'
 
@@ -41,44 +38,18 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     redirect('/pt')
   }
 
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  if (!publishableKey) {
-    throw new Error('Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY')
+  let messages: AbstractIntlMessages
+  try {
+    messages = (await import(`../../../messages/${params.locale}.json`)).default
+  } catch {
+    messages = (await import('../../../messages/pt.json')).default
   }
-
-  // Explicitly set locale from URL params so useTranslations in all child
-  // server components uses the correct locale regardless of requestLocale
-  // propagation issues between clerkMiddleware and intlMiddleware.
-  setRequestLocale(params.locale)
-
-  const { userId } = await auth()
-  const userResult = userId
-    ? await (db as any).execute(sql`
-        select
-          account_type as "accountType",
-          subscription_tier as "subscriptionTier"
-        from users
-        where clerk_user_id = ${userId}
-        limit 1
-      `)
-    : null
-  const currentUser = userResult?.[0] as { accountType?: string; subscriptionTier?: string | null } | undefined
-
-  const messages = await getMessages()
-  const signInUrl = `/${params.locale}/sign-in`
-  const signUpUrl = `/${params.locale}/sign-up`
-  const postSignInUrl = `/${params.locale}/matches`
-  const postSignUpUrl = `/${params.locale}/onboarding`
 
   return (
     <ClerkProvider
-      publishableKey={publishableKey}
-      signInUrl={signInUrl}
-      signUpUrl={signUpUrl}
-      signInForceRedirectUrl={postSignInUrl}
-      signInFallbackRedirectUrl={postSignInUrl}
-      signUpForceRedirectUrl={postSignUpUrl}
-      signUpFallbackRedirectUrl={postSignUpUrl}
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      signInUrl={`/${params.locale}/sign-in`}
+      signUpUrl={`/${params.locale}/sign-up`}
     >
       <NextIntlClientProvider locale={params.locale} messages={messages}>
         <script
@@ -92,7 +63,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
           `,
           }}
         />
-        <Navbar locale={params.locale} accountType={currentUser?.accountType ?? null} />
+        <Navbar locale={params.locale} />
         <main>{children}</main>
         <AgeGate />
       </NextIntlClientProvider>

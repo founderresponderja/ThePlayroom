@@ -3,6 +3,8 @@ import { db, users, profiles, photos, matches, quizResults, moderationStatusEnum
 import { getValidClerkSession } from '@/lib/auth'
 import { getCurrentUserByClerkId } from '@/lib/current-user'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -6,7 +6,14 @@
   "scripts": {
     "start": "expo start",
     "build": "eas build --platform all --non-interactive",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "eas:preview": "bash ./scripts/eas-release.sh preview all",
+    "eas:preview:android": "bash ./scripts/eas-release.sh preview android",
+    "eas:preview:ios": "bash ./scripts/eas-release.sh preview ios",
+    "eas:production": "bash ./scripts/eas-release.sh production all",
+    "eas:production:android": "bash ./scripts/eas-release.sh production android",
+    "eas:production:ios": "bash ./scripts/eas-release.sh production ios",
+    "eas:production:submit": "bash ./scripts/eas-release.sh production all --submit"
   },
   "dependencies": {
     "@clerk/expo": "^3.6.5",

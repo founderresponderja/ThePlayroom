@@ -4,6 +4,8 @@ import { getValidClerkSession } from '@/lib/auth'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 import { withDbRetry } from '@/lib/db-observability'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(_req: NextRequest) {
   const upcoming = await withDbRetry('events.listUpcoming', () =>
     db.query.events.findMany({

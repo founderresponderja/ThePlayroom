@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
 import { db, sql } from '@playroom/db'
-import { getDbObservabilitySnapshot } from '@/lib/db-observability'
 
 export const dynamic = 'force-dynamic'
 
 type RequiredEnvKey =
   | 'CLERK_SECRET_KEY'
   | 'STRIPE_SECRET_KEY'
+  | 'MAKE_OPS_WEBHOOK_URL'
   | 'DIRECT_URL'
 
 const requiredEnvKeys: RequiredEnvKey[] = [
   'CLERK_SECRET_KEY',
   'STRIPE_SECRET_KEY',
+  'MAKE_OPS_WEBHOOK_URL',
   'DIRECT_URL',
 ]
 
@@ -23,8 +24,8 @@ function getEnvStatus() {
 }
 
 export async function GET() {
-  const requiredEnv = getEnvStatus()
-  const allEnvConfigured = requiredEnv.every((item) => item.configured)
+  const env = getEnvStatus()
+  const allEnvConfigured = env.every((item) => item.configured)
 
   let database = {
     configured: Boolean(process.env.DIRECT_URL),
@@ -48,7 +49,6 @@ export async function GET() {
   }
 
   const status = allEnvConfigured && database.reachable ? 'ok' : 'error'
-  const dbObservability = getDbObservabilitySnapshot()
 
   return NextResponse.json(
     {
@@ -56,8 +56,7 @@ export async function GET() {
       checkedAt: new Date().toISOString(),
       subsystems: {
         database,
-        environment: requiredEnv,
-        dbObservability,
+        environment: env,
       },
     },
     {
