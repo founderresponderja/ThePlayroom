@@ -157,7 +157,14 @@ export default function KinkTest() {
         body: JSON.stringify(payload),
       })
 
-      if (!res.ok) throw new Error('Failed to submit quiz')
+      if (!res.ok) {
+        const apiError = await res.json().catch(() => null)
+        const message =
+          (apiError && typeof apiError.message === 'string' && apiError.message.trim())
+          || (apiError && typeof apiError.error === 'string' && apiError.error.trim())
+          || 'Failed to submit quiz'
+        throw new Error(message)
+      }
 
       const result = await res.json()
       setArchetype(result.archetype ?? null)
@@ -166,7 +173,7 @@ export default function KinkTest() {
       setCoupleCompatibility(result.coupleCompatibility ?? null)
       setShowResults(true)
     } catch (err) {
-      setError('Erro ao guardar teste. Tenta novamente.')
+      setError(err instanceof Error ? `Erro ao guardar teste: ${err.message}` : 'Erro ao guardar teste. Tenta novamente.')
       console.error(err)
     } finally {
       setLoading(false)

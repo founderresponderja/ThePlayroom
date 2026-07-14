@@ -1,10 +1,62 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { db, profiles, quizResults, eq, desc } from '@playroom/db'
+import { db, profiles, quizResults, eq, desc, sql } from '@playroom/db'
 import { calculateCompatibility } from '@/lib/matching'
 import { generateCouplePublicProfile } from '@/lib/ai-couple-profile'
 import { getValidClerkSession } from '@/lib/auth'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 import { withDbRetry } from '@/lib/db-observability'
+
+let ensuredQuizSchemaCompatibility = false
+
+async function ensureQuizSchemaCompatibility() {
+  if (ensuredQuizSchemaCompatibility) return
+
+  await withDbRetry('quiz.ensureSchemaCompatibility', () =>
+    db.execute(sql`
+      do $$
+      begin
+        if exists (
+          select 1
+          from information_schema.columns
+          where table_schema = 'public'
+            and table_name = 'quiz_results'
+            and column_name = 'derived_tags'
+            and data_type = 'ARRAY'
+        ) then
+          alter table quiz_results
+          alter column derived_tags type jsonb
+          using to_jsonb(derived_tags);
+        end if;
+
+        if exists (
+          select 1
+          from information_schema.columns
+          where table_schema = 'public'
+            and table_name = 'quiz_results'
+            and column_name = 'answers'
+            and data_type = 'ARRAY'
+        ) then
+          alter table quiz_results
+          alter column answers type jsonb
+          using to_jsonb(answers);
+        end if;
+      end
+      $$;
+    `)
+  )
+
+  ensuredQuizSchemaCompatibility = true
+}
+
+function getErrorMeta(error: unknown) {
+  const candidate = error as { code?: string; message?: string; detail?: string; constraint?: string } | null
+  return {
+    code: candidate?.code ?? null,
+    message: candidate?.message ?? (error instanceof Error ? error.message : 'Unknown error'),
+    detail: candidate?.detail ?? null,
+    constraint: candidate?.constraint ?? null,
+  }
+}
 
 function deriveTags(answers: Record<string, { rating: string; intensity?: number; role?: string }>) {
   const tags: string[] = []
@@ -75,6 +127,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
+    await ensureQuizSchemaCompatibility()
     const { answers, memberAnswers, accountTypeAtTime } = await req.json()
 
     const user = await ensureCurrentUserByClerkId(userId, { accountType: accountTypeAtTime })
@@ -209,6 +262,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ derivedTags, archetype })
   } catch (error) {
     console.error('Error saving quiz results:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const meta = getErrorMeta(error)
+
+    return NextResponse.json(
+      {
+        error: 'Failed to save quiz results',
+        message: meta.message,
+        code: meta.code,
+        detail: meta.detail,
+        constraint: meta.constraint,
+      },
+      { status: 500 }
+    )
   }
 }
