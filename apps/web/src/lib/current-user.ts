@@ -35,26 +35,60 @@ function normalizeDisplayName(displayName?: string | null) {
   return trimmed ? trimmed.slice(0, 100) : 'New User'
 }
 
-async function fetchCurrentUserByClerkId(clerkUserId: string) {
-  const rows = await withDbRetry<CurrentUser[]>('currentUser.fetchByClerkId', () =>
-    (db as any).execute(sql`
-      select
-        id,
-        clerk_user_id as "clerkUserId",
-        admin_role as "adminRole",
-        account_type as "accountType",
-        display_name as "displayName",
-        verification_level as "verificationLevel",
-        onboarding_complete as "onboardingComplete",
-        subscription_tier as "subscriptionTier"
-        , is_vip as "isVip"
-      from users
-      where clerk_user_id = ${clerkUserId}
-      limit 1
-    `)
-  )
+function isMissingAdminRoleColumnError(error: unknown) {
+  const candidate = error as { code?: string; message?: string } | null
+  if (!candidate) return false
+  return candidate.code === '42703' && /admin_role/i.test(candidate.message ?? '')
+}
 
-  return rows?.[0] as CurrentUser | undefined
+async function fetchCurrentUserByClerkId(clerkUserId: string) {
+  try {
+    const rows = await withDbRetry<CurrentUser[]>('currentUser.fetchByClerkId', () =>
+      (db as any).execute(sql`
+        select
+          id,
+          clerk_user_id as "clerkUserId",
+          admin_role as "adminRole",
+          account_type as "accountType",
+          display_name as "displayName",
+          verification_level as "verificationLevel",
+          onboarding_complete as "onboardingComplete",
+          subscription_tier as "subscriptionTier"
+          , is_vip as "isVip"
+        from users
+        where clerk_user_id = ${clerkUserId}
+        limit 1
+      `)
+    )
+
+    return rows?.[0] as CurrentUser | undefined
+  } catch (error) {
+    if (!isMissingAdminRoleColumnError(error)) {
+      throw error
+    }
+
+    const rows = await withDbRetry<Omit<CurrentUser, 'adminRole'>[]>(
+      'currentUser.fetchByClerkId.noAdminRoleFallback',
+      () =>
+        (db as any).execute(sql`
+          select
+            id,
+            clerk_user_id as "clerkUserId",
+            account_type as "accountType",
+            display_name as "displayName",
+            verification_level as "verificationLevel",
+            onboarding_complete as "onboardingComplete",
+            subscription_tier as "subscriptionTier"
+            , is_vip as "isVip"
+          from users
+          where clerk_user_id = ${clerkUserId}
+          limit 1
+        `)
+    )
+
+    const fallback = rows?.[0]
+    return fallback ? ({ ...fallback, adminRole: 'none' } as CurrentUser) : undefined
+  }
 }
 
 export async function ensureCurrentUserByClerkId(clerkUserId: string, seed: EnsureCurrentUserSeed = {}) {
@@ -106,7 +140,6 @@ export async function ensureCurrentUserByClerkId(clerkUserId: string, seed: Ensu
       .returning({
         id: users.id,
         clerkUserId: users.clerkUserId,
-        adminRole: users.adminRole,
         accountType: users.accountType,
         displayName: users.displayName,
         verificationLevel: users.verificationLevel,
@@ -116,7 +149,9 @@ export async function ensureCurrentUserByClerkId(clerkUserId: string, seed: Ensu
       })
   )
 
-  return (updated as CurrentUser | undefined) ?? inserted
+  return updated
+    ? ({ ...(updated as Omit<CurrentUser, 'adminRole'>), adminRole: inserted.adminRole ?? 'none' } as CurrentUser)
+    : inserted
 }
 
 export async function getCurrentUserByClerkId(clerkUserId: string) {
