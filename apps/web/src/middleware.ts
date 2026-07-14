@@ -37,6 +37,10 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next()
   }
 
+  if (pathname.startsWith('/api/')) {
+    return
+  }
+
   const intlResponse = intlMiddleware(req)
   const location = intlResponse.headers.get('location')
   if (location || intlResponse.status === 307 || intlResponse.status === 308) {
