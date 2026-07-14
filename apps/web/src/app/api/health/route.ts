@@ -6,26 +6,34 @@ export const dynamic = 'force-dynamic'
 type RequiredEnvKey =
   | 'CLERK_SECRET_KEY'
   | 'STRIPE_SECRET_KEY'
-  | 'MAKE_OPS_WEBHOOK_URL'
   | 'DIRECT_URL'
+
+type OptionalEnvKey = 'MAKE_OPS_WEBHOOK_URL'
 
 const requiredEnvKeys: RequiredEnvKey[] = [
   'CLERK_SECRET_KEY',
   'STRIPE_SECRET_KEY',
-  'MAKE_OPS_WEBHOOK_URL',
   'DIRECT_URL',
 ]
 
+const optionalEnvKeys: OptionalEnvKey[] = ['MAKE_OPS_WEBHOOK_URL']
+
 function getEnvStatus() {
-  return requiredEnvKeys.map((key) => ({
-    key,
-    configured: Boolean(process.env[key]),
-  }))
+  return {
+    required: requiredEnvKeys.map((key) => ({
+      key,
+      configured: Boolean(process.env[key]),
+    })),
+    optional: optionalEnvKeys.map((key) => ({
+      key,
+      configured: Boolean(process.env[key]),
+    })),
+  }
 }
 
 export async function GET() {
   const env = getEnvStatus()
-  const allEnvConfigured = env.every((item) => item.configured)
+  const allEnvConfigured = env.required.every((item) => item.configured)
 
   let database = {
     configured: Boolean(process.env.DIRECT_URL),
