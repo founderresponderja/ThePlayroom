@@ -2,23 +2,40 @@ import Stripe from 'stripe'
 import { headers } from 'next/headers'
 import { db, subscriptions, users, entitlements, orders, eq, orderStatusEnum } from '@playroom/db'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20',
 })
 
 export async function POST(req: Request) {
+  // Validate required env vars at request time
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('[CRITICAL] STRIPE_SECRET_KEY not configured')
+    return new Response('Webhook misconfigured', { status: 500 })
+  }
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('[CRITICAL] STRIPE_WEBHOOK_SECRET not configured')
+    return new Response('Webhook misconfigured', { status: 500 })
+  }
+
   const body = await req.text()
-  const signature = headers().get('stripe-signature')!
+  const signature = headers().get('stripe-signature')
+
+  // Validate signature header exists
+  if (!signature) {
+    console.error('[stripe-webhook] Missing stripe-signature header')
+    return new Response('Missing signature', { status: 401 })
+  }
 
   let event: Stripe.Event
   try {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!,
+      process.env.STRIPE_WEBHOOK_SECRET,
     )
-  } catch {
-    return new Response('Invalid signature', { status: 400 })
+  } catch (error) {
+    console.error('[stripe-webhook] Signature verification failed', { error })
+    return new Response('Invalid signature', { status: 401 })
   }
 
   // ── checkout.session.completed ───────────────────────────────────────────────

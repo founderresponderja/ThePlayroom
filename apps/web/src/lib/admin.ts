@@ -4,8 +4,6 @@ import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 
 export type AdminRole = 'none' | 'admin' | 'super_admin'
 
-const DEFAULT_SUPER_ADMIN_EMAIL = 'ampliasolutions@gmail.com'
-
 type AdminContext = {
   userId: string | null
   appUserId: number | null
@@ -20,7 +18,15 @@ function normalizeRole(role?: string | null): AdminRole {
 }
 
 function isBootstrapSuperAdminEmail(email?: string | null) {
-  const target = (process.env.SUPER_ADMIN_EMAIL ?? DEFAULT_SUPER_ADMIN_EMAIL).trim().toLowerCase()
+  // SECURITY: Require explicit env var to enable bootstrap super admin
+  // Do NOT auto-promote users without explicit configuration
+  const target = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase()
+  if (!target) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[admin] SUPER_ADMIN_EMAIL not configured - bootstrap super admin disabled')
+    }
+    return false
+  }
   return Boolean(email && email.trim().toLowerCase() === target)
 }
 
@@ -39,13 +45,25 @@ async function maybeBootstrapSuperAdmin(context: AdminContext): Promise<AdminCon
   if (!context.userId || !context.appUserId) return context
   if (context.adminRole === 'super_admin') return context
 
+  // Only proceed if bootstrap is enabled via env var
+  if (!process.env.SUPER_ADMIN_EMAIL?.trim()) {
+    return context
+  }
+
   const email = await getPrimaryEmail(context.userId)
   if (!isBootstrapSuperAdminEmail(email)) return context
 
-  await db
-    .update(users)
-    .set({ adminRole: 'super_admin', updatedAt: new Date().toISOString() })
-    .where(eq(users.id, context.appUserId))
+  console.warn('[admin] Bootstrap promoting user to super_admin', { userId: context.userId, email })
+
+  try {
+    await db
+      .update(users)
+      .set({ adminRole: 'super_admin', updatedAt: new Date().toISOString() })
+      .where(eq(users.id, context.appUserId))
+  } catch (error) {
+    console.error('[admin] Failed to bootstrap super admin', { error })
+    return context
+  }
 
   return {
     ...context,

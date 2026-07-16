@@ -45,7 +45,11 @@ function assertKeyBelongsToUser(key: string, clerkUserId: string) {
   }
 }
 
-async function insertConfirmedPhoto(user: AuthenticatedPhotoUser, body: z.infer<typeof confirmPhotoSchema>) {
+async function insertConfirmedPhoto(
+  user: AuthenticatedPhotoUser,
+  body: z.infer<typeof confirmPhotoSchema>,
+  csamScanStatus: 'pending' | 'clean' | 'flagged' | 'error' | 'unscanned' = 'pending',
+) {
   const key = getObjectKey(body.key)
   const url = getPublicUrl(key)
 
@@ -79,8 +83,8 @@ async function insertConfirmedPhoto(user: AuthenticatedPhotoUser, body: z.infer<
         url,
         isPrivate: body.isPrivate ?? false,
         isPrimary: shouldBePrimary,
-        moderationStatus: moderationStatusEnum.enumValues[0],
-        csamScanStatus: 'clean',
+        moderationStatus: moderationStatusEnum.enumValues[0], // 'pending' by default
+        csamScanStatus, // Use scan result: 'clean', 'unscanned', 'error', etc.
       })
       .returning()
 
@@ -112,6 +116,7 @@ export async function confirmPhotoUpload(req: Request) {
     const imageBuffer = await getObjectBytes(body.key)
     const scanResult = await scanImageForCSAM(imageBuffer, body.key)
 
+    // If scanner flagged the image as unsafe, reject immediately.
     if (!scanResult.safe) {
       await deleteObject(body.key)
       await reportCSAM(body.key, user.clerkUserId, scanResult.reason ?? 'Scanner flagged image')
@@ -122,7 +127,32 @@ export async function confirmPhotoUpload(req: Request) {
       )
     }
 
-    const photo = await insertConfirmedPhoto(user, body)
+    // Determine CSAM scan status based on whether scanner actually ran.
+    let csamScanStatus: 'pending' | 'clean' | 'flagged' | 'error' | 'unscanned'
+    if (scanResult.scanned === true) {
+      // Real scanner ran and passed — mark as clean.
+      csamScanStatus = 'clean'
+    } else {
+      // Scanner not available or not configured — mark as unscanned (requires manual review).
+      csamScanStatus = 'unscanned'
+
+      // Alert operations team that a photo is unscanned in production.
+      if (process.env.NODE_ENV === 'production') {
+        const { alertScannerUnavailable } = await import('@/lib/ops-alerts')
+        // Count unscanned photos (do it async, don't block the upload)
+        db.query.photos
+          .findMany({
+            where: eq(photos.csamScanStatus, 'unscanned'),
+            columns: { id: true },
+          })
+          .then((rows) => {
+            alertScannerUnavailable(rows.length).catch(console.error)
+          })
+          .catch(console.error)
+      }
+    }
+
+    const photo = await insertConfirmedPhoto(user, body, csamScanStatus)
     return NextResponse.json(photo)
   } catch (error) {
     if (error instanceof PhotoApiError) {

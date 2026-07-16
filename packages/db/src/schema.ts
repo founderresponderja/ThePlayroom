@@ -51,6 +51,7 @@ export const csamScanStatusEnum = pgEnum('csam_scan_status', [
   'clean',
   'flagged',
   'error',
+  'unscanned', // Photo uploaded but CSAM scanner not configured/available
 ]);
 
 export const orderStatusEnum = pgEnum('order_status', [
@@ -88,7 +89,7 @@ export const users = pgTable('users', {
 
 
 export const profiles = pgTable('profiles', {
-  userId: integer('user_id').notNull().references(() => users.id),
+  userId: integer('user_id').primaryKey().references(() => users.id),
   bio: text('bio').notNull().default(''),
   preferences: jsonb('preferences').notNull().default('{}'),
   interests: jsonb('interests').notNull().default('[]'),
@@ -121,6 +122,7 @@ export const verifications = pgTable('verifications', {
 });
 
 export const quizResults = pgTable('quiz_results', {
+  id: serial('id').primaryKey(),
   userId: integer('user_id').notNull().references(() => users.id),
   quizVersion: varchar('quiz_version', { length: 64 }).notNull(),
   accountTypeAtTime: varchar('account_type_at_time', { length: 32 }).notNull(),
@@ -195,7 +197,7 @@ export const messages = pgTable('messages', {
 });
 
 export const subscriptions = pgTable('subscriptions', {
-  userId: integer('user_id').notNull().references(() => users.id),
+  userId: integer('user_id').primaryKey().references(() => users.id),
   stripeCustomerId: varchar('stripe_customer_id', { length: 191 }).notNull(),
   stripeSubscriptionId: varchar('stripe_subscription_id', { length: 191 }).notNull(),
   plan: varchar('plan', { length: 100 }).notNull(),
