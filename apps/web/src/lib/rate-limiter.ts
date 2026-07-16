@@ -120,6 +120,9 @@ export const RATE_LIMITS = {
   ORDERS_CREATE: { requests: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour
   CHECKOUT: { requests: 5, windowMs: 60 * 60 * 1000 }, // 5 per hour
 
+  // AI-heavy operations
+  COUPLE_PROFILE_GENERATION: { requests: 5, windowMs: 24 * 60 * 60 * 1000 }, // 5 per day, per user
+
   // Admin Actions
   ADMIN_ACTIONS: { requests: 30, windowMs: 60 * 1000 }, // 30 per minute
 }

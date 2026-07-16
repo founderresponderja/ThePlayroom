@@ -10,9 +10,12 @@ export const appEnvSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string(),
   STRIPE_CONNECT_CLIENT_ID: z.string(),
   GOOGLE_MAPS_API_KEY: z.string(),
+  GOOGLE_VISION_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   EXPO_PUSH_KEY: z.string().optional(),
   MAKE_WEBHOOK_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   CSAM_SCANNER_API_KEY: z.string().optional(),
   SUPER_ADMIN_EMAIL: z.string().email().optional(), // Explicit opt-in for bootstrap admin
   JWT_SECRET: z.string(),
@@ -24,8 +27,11 @@ export type AppEnv = z.infer<typeof appEnvSchema>;
 export function parseAppEnv(env: Record<string, string | undefined>) {
   return appEnvSchema.parse({
     ...env,
+    GOOGLE_VISION_API_KEY: env.GOOGLE_VISION_API_KEY,
     EXPO_PUSH_KEY: env.EXPO_PUSH_KEY,
     MAKE_WEBHOOK_URL: env.MAKE_WEBHOOK_URL,
+    UPSTASH_REDIS_REST_URL: env.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: env.UPSTASH_REDIS_REST_TOKEN,
     CSAM_SCANNER_API_KEY: env.CSAM_SCANNER_API_KEY,
     SUPER_ADMIN_EMAIL: env.SUPER_ADMIN_EMAIL,
     NEXTAUTH_URL: env.NEXTAUTH_URL

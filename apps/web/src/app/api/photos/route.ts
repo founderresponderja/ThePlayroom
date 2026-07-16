@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const authResult = await getAuthenticatedPhotoUser()
   if ('error' in authResult) return authResult.error
 
-  const rateLimit = applyRateLimit(authResult.user.id, 'PHOTO_UPLOAD')
+  const rateLimit = await applyRateLimit(authResult.user.id, 'PHOTO_UPLOAD')
   if (!rateLimit.allowed) {
     return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
@@ -41,7 +41,7 @@ export async function DELETE(req: Request) {
   const authResult = await getAuthenticatedPhotoUser()
   if ('error' in authResult) return authResult.error
 
-  const rateLimit = applyRateLimit(authResult.user.id, 'PHOTO_DELETE')
+  const rateLimit = await applyRateLimit(authResult.user.id, 'PHOTO_DELETE')
   if (!rateLimit.allowed) {
     return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }

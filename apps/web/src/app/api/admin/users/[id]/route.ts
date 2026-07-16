@@ -14,7 +14,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!adminContext.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   if (!adminContext.appUserId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const rateLimit = applyRateLimit(adminContext.appUserId, 'ADMIN_ACTIONS')
+  const rateLimit = await applyRateLimit(adminContext.appUserId, 'ADMIN_ACTIONS')
   if (!rateLimit.allowed) {
     return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }

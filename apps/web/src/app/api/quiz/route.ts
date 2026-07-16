@@ -160,6 +160,7 @@ export async function POST(req: NextRequest) {
       const member2Prefs = normalizeObject(members.member2)
 
       const generatedCoupleProfile = await generateCouplePublicProfile({
+        userId: user.id,
         accountType: accountTypeAtTime,
         sharedTags,
         memberOrientations: [

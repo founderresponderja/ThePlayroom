@@ -44,6 +44,7 @@ export const moderationStatusEnum = pgEnum('moderation_status', [
   'pending',
   'approved',
   'rejected',
+  'pending_review',
 ]);
 
 export const csamScanStatusEnum = pgEnum('csam_scan_status', [
@@ -107,6 +108,9 @@ export const photos = pgTable('photos', {
   isPrimary: boolean('is_primary').notNull().default(false),
   moderationStatus: moderationStatusEnum('moderation_status').notNull().default('pending'),
   csamScanStatus: csamScanStatusEnum('csam_scan_status').notNull().default('pending'),
+  reviewPriority: varchar('review_priority', { length: 16 }).notNull().default('normal'),
+  safeSearchCategories: jsonb('safe_search_categories'),
+  safeSearchReason: varchar('safe_search_reason', { length: 64 }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 

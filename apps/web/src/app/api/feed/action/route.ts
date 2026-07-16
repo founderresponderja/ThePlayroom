@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const currentUser = await ensureCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const rateLimit = applyRateLimit(currentUser.id, 'MATCHES')
+  const rateLimit = await applyRateLimit(currentUser.id, 'MATCHES')
   if (!rateLimit.allowed) {
     return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }

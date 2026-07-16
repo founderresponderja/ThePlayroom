@@ -9,6 +9,9 @@ type PhotoItem = {
   displayName: string
   accountType: string
   createdAt: string
+  reviewPriority?: string | null
+  safeSearchCategories?: Record<string, string> | null
+  safeSearchReason?: string | null
 }
 
 export default function ModerationQueue({ initialPhotos }: { initialPhotos: PhotoItem[] }) {
@@ -41,6 +44,20 @@ export default function ModerationQueue({ initialPhotos }: { initialPhotos: Phot
             <div style={{ color: 'var(--text)', fontWeight: 600, marginBottom: '0.25rem' }}>{photo.displayName}</div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.25rem' }}>{photo.accountType}</div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.75rem' }}>{photo.createdAt?.slice(0, 10)}</div>
+            {photo.reviewPriority === 'high' && (
+              <div style={{ color: '#b45309', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Prioridade alta
+              </div>
+            )}
+            {photo.safeSearchCategories && Object.keys(photo.safeSearchCategories).length > 0 && (
+              <div style={{ marginBottom: '0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <div style={{ marginBottom: '0.25rem', fontWeight: 600 }}>SafeSearch (contexto):</div>
+                {Object.entries(photo.safeSearchCategories).map(([key, value]) => (
+                  <div key={key}>{key}: {String(value)}</div>
+                ))}
+                {photo.safeSearchReason ? <div>reason: {photo.safeSearchReason}</div> : null}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
                 onClick={() => handleAction(photo.id, 'approved')}

@@ -14,7 +14,7 @@ export async function PATCH(
   const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const rateLimit = applyRateLimit(user.id, 'PHOTO_UPLOAD')
+  const rateLimit = await applyRateLimit(user.id, 'PHOTO_UPLOAD')
   if (!rateLimit.allowed) {
     return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }

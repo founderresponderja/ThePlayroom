@@ -1,4 +1,8 @@
+import { getLimiter, upstashAvailable } from './rate-limiter-upstash'
+import { checkRateLimit, RATE_LIMITS } from './rate-limiter'
+
 type CoupleProfileInput = {
+  userId: number
   accountType: string
   sharedTags: string[]
   memberOrientations: string[]
@@ -65,6 +69,33 @@ export async function generateCouplePublicProfile(input: CoupleProfileInput): Pr
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return buildLocalFreeProfile(input)
+  }
+
+  const limitConfig = RATE_LIMITS.COUPLE_PROFILE_GENERATION
+  const rateLimitKey = String(input.userId)
+
+  if (upstashAvailable) {
+    const limiter = getLimiter(
+      'COUPLE_PROFILE_GENERATION',
+      limitConfig.requests,
+      Math.ceil(limitConfig.windowMs / 1000)
+    )
+
+    if (limiter) {
+      const result = await limiter.limit(rateLimitKey)
+      if (!result.success) {
+        return buildLocalFreeProfile(input)
+      }
+    }
+  } else {
+    const fallbackAllowed = checkRateLimit(
+      `COUPLE_PROFILE_GENERATION:${rateLimitKey}`,
+      limitConfig.requests,
+      limitConfig.windowMs
+    )
+    if (!fallbackAllowed) {
+      return buildLocalFreeProfile(input)
+    }
   }
 
   const prompt = `Gera um JSON com headline, about, commonCharacteristics (array), lookingFor (array) para um perfil publico de casal discreto e consent-based.\nConta: ${input.accountType}\nTags comuns: ${input.sharedTags.join(', ')}\nOrientacoes: ${input.memberOrientations.join(', ')}\nProcura: ${input.memberLookingFor.flat().join(', ')}`

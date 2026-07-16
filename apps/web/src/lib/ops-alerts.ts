@@ -12,6 +12,7 @@ export type OpsAlertEvent = {
   type:
     | 'csam_detected'
     | 'csam_scanner_unavailable'
+    | 'safesearch_flagged'
     | 'rate_limit_exceeded'
     | 'system_error'
   severity: 'critical' | 'warning'

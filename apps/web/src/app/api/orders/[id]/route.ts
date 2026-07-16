@@ -17,7 +17,7 @@ export async function PATCH(
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rateLimit = applyRateLimit(userId, 'ORDERS_CREATE')
+  const rateLimit = await applyRateLimit(userId, 'ORDERS_CREATE')
   if (!rateLimit.allowed) {
     return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }

@@ -117,6 +117,7 @@ async function maybeRefreshCouplePublicProfile(userId: number, profile: any) {
   const member2 = normalizeUnknownObject(members.member2)
 
   const generatedCoupleProfile = await generateCouplePublicProfile({
+    userId,
     accountType: user.accountType,
     sharedTags: Array.isArray(latestQuiz.derivedTags) ? (latestQuiz.derivedTags as string[]) : [],
     memberOrientations: [String(member1.orientation ?? 'not-set'), String(member2.orientation ?? 'not-set')],

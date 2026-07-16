@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const rateLimit = applyRateLimit(currentUser.id, 'MESSAGES')
+  const rateLimit = await applyRateLimit(currentUser.id, 'MESSAGES')
   if (!rateLimit.allowed) {
     return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const rateLimit = applyRateLimit(currentUser.id, 'MESSAGES')
+  const rateLimit = await applyRateLimit(currentUser.id, 'MESSAGES')
   if (!rateLimit.allowed) {
     return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }

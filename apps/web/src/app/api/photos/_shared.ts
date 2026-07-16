@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { getObjectBytes, getObjectKey, getPublicUrl, deleteObject } from '@/lib/r2'
 import { reportCSAM, scanImageForCSAM } from '@/lib/csam'
 import { getCurrentUserByClerkId } from '@/lib/current-user'
+import { runSafeSearchHeuristic } from '@/lib/safesearch'
+import { sendOpsAlert } from '@/lib/ops-alerts'
 
 const MAX_PHOTOS = 10
 
@@ -49,6 +51,10 @@ async function insertConfirmedPhoto(
   user: AuthenticatedPhotoUser,
   body: z.infer<typeof confirmPhotoSchema>,
   csamScanStatus: 'pending' | 'clean' | 'flagged' | 'error' | 'unscanned' = 'pending',
+  moderationStatus: 'pending' | 'pending_review' = 'pending',
+  reviewPriority: 'normal' | 'high' = 'normal',
+  safeSearchCategories?: Record<string, string>,
+  safeSearchReason?: string,
 ) {
   const key = getObjectKey(body.key)
   const url = getPublicUrl(key)
@@ -83,8 +89,11 @@ async function insertConfirmedPhoto(
         url,
         isPrivate: body.isPrivate ?? false,
         isPrimary: shouldBePrimary,
-        moderationStatus: moderationStatusEnum.enumValues[0], // 'pending' by default
+        moderationStatus,
         csamScanStatus, // Use scan result: 'clean', 'unscanned', 'error', etc.
+        reviewPriority,
+        safeSearchCategories,
+        safeSearchReason,
       })
       .returning()
 
@@ -152,7 +161,34 @@ export async function confirmPhotoUpload(req: Request) {
       }
     }
 
-    const photo = await insertConfirmedPhoto(user, body, csamScanStatus)
+    const safeSearchResult = await runSafeSearchHeuristic(Buffer.from(imageBuffer))
+
+    const moderationStatus: 'pending' | 'pending_review' = safeSearchResult.flagged ? 'pending_review' : 'pending'
+    const reviewPriority = safeSearchResult.flagged ? 'high' : 'normal'
+
+    if (safeSearchResult.flagged) {
+      await sendOpsAlert({
+        type: 'safesearch_flagged',
+        severity: 'warning',
+        payload: {
+          userId: user.id,
+          clerkUserId: user.clerkUserId,
+          key: body.key,
+          categories: safeSearchResult.categories,
+          reason: safeSearchResult.reason,
+        },
+      })
+    }
+
+    const photo = await insertConfirmedPhoto(
+      user,
+      body,
+      csamScanStatus,
+      moderationStatus,
+      reviewPriority,
+      safeSearchResult.categories,
+      safeSearchResult.reason,
+    )
     return NextResponse.json(photo)
   } catch (error) {
     if (error instanceof PhotoApiError) {
