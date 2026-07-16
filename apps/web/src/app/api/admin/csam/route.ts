@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
-import { isAdmin } from '@/lib/admin'
+import { getAdminContext } from '@/lib/admin'
 import { db } from '@playroom/db'
 import { sql } from 'drizzle-orm'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 export async function GET() {
-  const admin = await isAdmin()
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const admin = await getAdminContext()
+  if (!admin.isAdmin || !admin.appUserId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const rateLimit = applyRateLimit(admin.appUserId, 'ADMIN_ACTIONS')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const scannerConfigured = !!process.env.CSAM_SCANNER_API_KEY
   const bypassActive = process.env.NODE_ENV === 'production' && !scannerConfigured

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { and, db, eq, moderationStatusEnum, photos } from '@playroom/db'
 import { z } from 'zod'
-import { isAdmin } from '@/lib/admin'
+import { getAdminContext } from '@/lib/admin'
 import { deleteObject } from '@/lib/r2'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 const moderationSchema = z.object({
   moderationStatus: z.enum([
@@ -12,8 +13,13 @@ const moderationSchema = z.object({
 })
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const admin = await isAdmin()
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const admin = await getAdminContext()
+  if (!admin.isAdmin || !admin.appUserId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const rateLimit = applyRateLimit(admin.appUserId, 'ADMIN_ACTIONS')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   try {
     const parsed = moderationSchema.safeParse(await req.json())

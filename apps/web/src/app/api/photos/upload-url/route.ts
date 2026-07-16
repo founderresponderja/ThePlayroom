@@ -5,6 +5,7 @@ import { getPresignedUploadUrl } from '@/lib/r2'
 import { randomUUID } from 'crypto'
 import { z } from 'zod'
 import { getCurrentUserByClerkId } from '@/lib/current-user'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE_MB = 10
@@ -21,6 +22,11 @@ export async function POST(req: Request) {
 
   const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  const rateLimit = applyRateLimit(user.id, 'PHOTO_UPLOAD')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   let body: z.infer<typeof uploadUrlSchema>
   try {

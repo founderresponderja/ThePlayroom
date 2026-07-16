@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, products, shops, eq, and } from '@playroom/db'
+import { createProductSchema } from '@playroom/config'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 import { withDbRetry } from '@/lib/db-observability'
 
@@ -40,29 +41,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Complete Stripe onboarding first' }, { status: 403 })
   }
 
-  const body = await req.json() as {
-    title?: string
-    description?: string
-    priceCents?: number
-    category?: string
-    stock?: number
-    images?: string[]
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  if (!body.title || !body.priceCents) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  const parsed = createProductSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
+
+  const payload = parsed.data
 
   const insertValues: typeof products.$inferInsert = {
     shopId: shop.id,
-    title: body.title,
-    description: body.description ?? '',
-    priceCents: body.priceCents,
+    title: payload.title,
+    description: payload.description,
+    priceCents: payload.priceCents,
     currency: 'EUR',
-    category: body.category ?? '',
-    stock: body.stock ?? 0,
-    images: body.images ?? [],
-    ageRestricted: true,
+    category: payload.category,
+    stock: payload.stock,
+    images: payload.images,
+    ageRestricted: payload.ageRestricted,
     moderationStatus: 'pending',
     active: false,
   }

@@ -4,6 +4,7 @@ import { db, matches, eq, and } from '@playroom/db'
 import { notifyUser } from '@/lib/notifications'
 import { ensureCurrentUserByClerkId } from '@/lib/current-user'
 import { withDbRetry } from '@/lib/db-observability'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 export async function POST(req: Request) {
   const { userId } = await auth()
@@ -11,6 +12,11 @@ export async function POST(req: Request) {
 
   const currentUser = await ensureCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  const rateLimit = applyRateLimit(currentUser.id, 'MATCHES')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   // targetUserId is an integer (references users.id which is serial)
   const { targetUserId, action } = (await req.json()) as {

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, photos, eq } from '@playroom/db'
 import { deleteObject } from '@/lib/r2'
 import { confirmPhotoUpload, deletePhotoRecordForUser, getAuthenticatedPhotoUser } from './_shared'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 // GET — list the authenticated user's photos
 export async function GET() {
@@ -24,6 +25,14 @@ export async function GET() {
 
 // POST — save photo record after the client has uploaded directly to R2
 export async function POST(req: Request) {
+  const authResult = await getAuthenticatedPhotoUser()
+  if ('error' in authResult) return authResult.error
+
+  const rateLimit = applyRateLimit(authResult.user.id, 'PHOTO_UPLOAD')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
+
   return confirmPhotoUpload(req)
 }
 
@@ -31,6 +40,11 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const authResult = await getAuthenticatedPhotoUser()
   if ('error' in authResult) return authResult.error
+
+  const rateLimit = applyRateLimit(authResult.user.id, 'PHOTO_DELETE')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   // photoId is a serial integer — accept it as number from the JSON body
   const { photoId } = (await req.json()) as { photoId: number }

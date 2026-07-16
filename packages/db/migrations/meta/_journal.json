@@ -15,6 +15,13 @@
       "when": 1783680000000,
       "tag": "0001_admin_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1784233581397,
+      "tag": "0002_smiling_bucky",
+      "breakpoints": true
     }
   ]
 }

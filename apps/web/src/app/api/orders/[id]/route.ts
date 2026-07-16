@@ -4,6 +4,7 @@ import { db, orderItems, orders, shops, orderStatusEnum, eq } from '@playroom/db
 import { getValidClerkSession } from '@/lib/auth'
 import { isAdmin } from '@/lib/admin'
 import { getCurrentUserByClerkId } from '@/lib/current-user'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 const patchOrderSchema = z.object({
   status: z.enum(['shipped']),
@@ -15,6 +16,11 @@ export async function PATCH(
 ) {
   const { userId } = await getValidClerkSession(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rateLimit = applyRateLimit(userId, 'ORDERS_CREATE')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const parsedOrderId = Number(params.id)
   if (!Number.isInteger(parsedOrderId) || parsedOrderId <= 0) {

@@ -1,4 +1,10 @@
 /**
+ * IN USE IN REAL API ROUTES: This in-memory limiter is now actively enforcing
+ * limits on critical endpoints.
+ *
+ * WARNING: This remains insufficient for multi-instance or multi-region
+ * deployments because counters are local to each process.
+ *
  * Simple in-memory rate limiter using sliding window algorithm.
  * For production, integrate with Redis via Upstash.
  *

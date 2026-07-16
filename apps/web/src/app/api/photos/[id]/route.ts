@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db, photos, users, eq, and } from '@playroom/db'
 import { getCurrentUserByClerkId } from '@/lib/current-user'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 export async function PATCH(
   req: Request,
@@ -12,6 +13,11 @@ export async function PATCH(
 
   const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  const rateLimit = applyRateLimit(user.id, 'PHOTO_UPLOAD')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const photoId = Number(params.id)
   if (isNaN(photoId)) return NextResponse.json({ error: 'Invalid photo ID' }, { status: 400 })

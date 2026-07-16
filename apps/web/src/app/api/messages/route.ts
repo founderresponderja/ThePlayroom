@@ -3,6 +3,7 @@ import { db, users, threads, messages, eq, and, or } from '@playroom/db'
 import { z } from 'zod'
 import { getValidClerkSession } from '@/lib/auth'
 import { getCurrentUserByClerkId } from '@/lib/current-user'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 const sendMessageSchema = z.object({
   threadId: z.number().int().positive(),
@@ -15,6 +16,11 @@ export async function GET(req: NextRequest) {
 
   const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  const rateLimit = applyRateLimit(currentUser.id, 'MESSAGES')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const { searchParams } = new URL(req.url)
   const threadIdParam = searchParams.get('threadId')
@@ -50,6 +56,11 @@ export async function POST(req: NextRequest) {
 
   const currentUser = await getCurrentUserByClerkId(userId)
   if (!currentUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  const rateLimit = applyRateLimit(currentUser.id, 'MESSAGES')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   let payload: z.infer<typeof sendMessageSchema>
   try {

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { db, users, eq, sql } from '@playroom/db'
+import { adminUpdateUserSchema } from '@playroom/config'
 import { getAdminContext } from '@/lib/admin'
 import { notifyAllAdminsByEmail } from '@/lib/admin-alerts'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 type UpdatePayload =
   | { action?: 'suspend'; deletedAt?: string }
@@ -10,6 +12,12 @@ type UpdatePayload =
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const adminContext = await getAdminContext()
   if (!adminContext.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!adminContext.appUserId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const rateLimit = applyRateLimit(adminContext.appUserId, 'ADMIN_ACTIONS')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   try {
     const body = (await req.json()) as UpdatePayload
@@ -23,16 +31,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         return NextResponse.json({ error: 'Only super admin can change privileges' }, { status: 403 })
       }
 
+      const parsed = adminUpdateUserSchema.safeParse(body)
+      if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+      }
+
+      if (!parsed.data.adminRole) {
+        return NextResponse.json({ error: 'Invalid admin role' }, { status: 400 })
+      }
+
       const targetUser = await db.query.users.findFirst({ where: eq(users.id, userId) })
       if (!targetUser) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
       }
 
-      if (!['none', 'admin', 'super_admin'].includes(body.adminRole)) {
-        return NextResponse.json({ error: 'Invalid admin role' }, { status: 400 })
-      }
-
-      if (targetUser.id === adminContext.appUserId && targetUser.adminRole === 'super_admin' && body.adminRole !== 'super_admin') {
+      if (targetUser.id === adminContext.appUserId && targetUser.adminRole === 'super_admin' && parsed.data.adminRole !== 'super_admin') {
         const superAdminCountRows = await (db as any).execute(sql`
           select count(*)::int as count
           from users
@@ -48,15 +61,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
       await db
         .update(users)
-        .set({ adminRole: body.adminRole, updatedAt: new Date().toISOString() })
+        .set({ adminRole: parsed.data.adminRole, updatedAt: new Date().toISOString() })
         .where(eq(users.id, userId))
 
       await notifyAllAdminsByEmail({
         subject: '[The Playroom] Privilégios de administração alterados',
-        text: `O utilizador #${userId} (${targetUser.displayName}) passou para o papel ${body.adminRole}. Alteração feita por admin #${adminContext.appUserId}.`,
+        text: `O utilizador #${userId} (${targetUser.displayName}) passou para o papel ${parsed.data.adminRole}. Alteração feita por admin #${adminContext.appUserId}.`,
       })
 
-      return NextResponse.json({ ok: true, adminRole: body.adminRole })
+      return NextResponse.json({ ok: true, adminRole: parsed.data.adminRole })
     }
 
     const deletedAt = body?.deletedAt ?? new Date().toISOString()

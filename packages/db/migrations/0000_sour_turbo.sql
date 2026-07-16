@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS "products" (
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "profiles" (
-	"user_id" integer PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
 	"bio" text DEFAULT '' NOT NULL,
 	"preferences" jsonb DEFAULT '{}' NOT NULL,
 	"interests" jsonb DEFAULT '[]' NOT NULL,
@@ -205,7 +205,6 @@ CREATE TABLE IF NOT EXISTS "push_subscriptions" (
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "quiz_results" (
-	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"quiz_version" varchar(64) NOT NULL,
 	"account_type_at_time" varchar(32) NOT NULL,
@@ -249,7 +248,7 @@ CREATE TABLE IF NOT EXISTS "shops" (
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "subscriptions" (
-	"user_id" integer PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
 	"stripe_customer_id" varchar(191) NOT NULL,
 	"stripe_subscription_id" varchar(191) NOT NULL,
 	"plan" varchar(100) NOT NULL,

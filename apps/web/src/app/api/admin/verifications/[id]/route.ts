@@ -1,16 +1,22 @@
 import { NextResponse } from 'next/server'
-import { isAdmin } from '@/lib/admin'
+import { getAdminContext } from '@/lib/admin'
 import { db } from '@playroom/db'
 import { sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 const patchVerificationSchema = z.object({
   status: z.enum(['approved', 'rejected']),
 })
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const admin = await isAdmin()
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const admin = await getAdminContext()
+  if (!admin.isAdmin || !admin.appUserId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const rateLimit = applyRateLimit(admin.appUserId, 'ADMIN_ACTIONS')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const verificationId = Number(params.id)
   if (!Number.isInteger(verificationId) || verificationId <= 0) {

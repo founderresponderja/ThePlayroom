@@ -7,6 +7,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { checkRateLimit, getRateLimitStatus, RATE_LIMITS } from './rate-limiter'
 
 export type RateLimitKey = 'MESSAGES' | 'MATCHES' | 'PHOTO_UPLOAD' | 'ORDERS_CREATE' | 'ADMIN_ACTIONS'
+  | 'PHOTO_DELETE'
+  | 'CHECKOUT'
 
 /**
  * Apply rate limit to a request and return response if exceeded

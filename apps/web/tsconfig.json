@@ -6,6 +6,9 @@
       "@/*": [
         "./src/*"
       ],
+      "@playroom/config": [
+        "../../packages/config/src"
+      ],
       "@playroom/ui": [
         "../../packages/ui/src"
       ],

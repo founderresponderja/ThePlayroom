@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, products, shops, orders, orderItems, eq, and } from '@playroom/db'
 import { stripe } from '@/lib/stripe'
 import { getCurrentUserByClerkId } from '@/lib/current-user'
+import { applyRateLimit } from '@/lib/rate-limit-middleware'
 
 const PLATFORM_FEE_BPS = Number(process.env.MARKETPLACE_DEFAULT_COMMISSION_BPS ?? 1000)
 
@@ -12,6 +13,11 @@ export async function GET() {
 
   const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  const rateLimit = applyRateLimit(user.id, 'ORDERS_CREATE')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const userOrders = await db.query.orders.findMany({
     where: eq(orders.buyerUserId, user.id),
@@ -47,6 +53,11 @@ export async function POST(req: Request) {
 
   const user = await getCurrentUserByClerkId(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  const rateLimit = applyRateLimit(user.id, 'ORDERS_CREATE')
+  if (!rateLimit.allowed) {
+    return rateLimit.response ?? NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const { productId, qty = 1 } = await req.json() as { productId: number; qty?: number }
 
