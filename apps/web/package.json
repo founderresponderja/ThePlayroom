@@ -17,6 +17,7 @@
     "@playroom/core": "workspace:*",
     "@playroom/db": "workspace:*",
     "@playroom/ui": "workspace:*",
+    "@sentry/nextjs": "^10.66.0",
     "@stripe/stripe-js": "^9.8.0",
     "@types/google.maps": "^3.55.0",
     "@types/libsodium-wrappers": "^0.8.2",

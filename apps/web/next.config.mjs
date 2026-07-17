@@ -1,4 +1,5 @@
 import createNextIntlPlugin from 'next-intl/plugin'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const withNextIntl = createNextIntlPlugin('./i18n.ts')
 
@@ -14,4 +15,9 @@ const nextConfig = {
   },
 }
 
-export default withNextIntl(nextConfig)
+const intlConfig = withNextIntl(nextConfig)
+
+export default withSentryConfig(intlConfig, {
+  silent: true,
+  disableLogger: true,
+})

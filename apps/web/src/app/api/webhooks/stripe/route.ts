@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import { headers } from 'next/headers'
+import * as Sentry from '@sentry/nextjs'
 import { db, subscriptions, users, entitlements, orders, eq, orderStatusEnum } from '@playroom/db'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -35,6 +36,12 @@ export async function POST(req: Request) {
     )
   } catch (error) {
     console.error('[stripe-webhook] Signature verification failed', { error })
+    Sentry.withScope((scope) => {
+      scope.setLevel('warning')
+      scope.setTag('webhook.provider', 'stripe')
+      scope.setTag('webhook.stage', 'signature_verification')
+      Sentry.captureException(error)
+    })
     return new Response('Invalid signature', { status: 401 })
   }
 

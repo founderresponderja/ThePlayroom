@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/nextjs'
+
 type SafeSearchResult = {
   flagged: boolean
   categories: Record<string, string>
@@ -39,6 +41,13 @@ export async function runSafeSearchHeuristic(imageBytes: Buffer): Promise<SafeSe
       console.error('[safesearch] Vision API returned non-OK status', {
         status: response.status,
       })
+      Sentry.withScope((scope) => {
+        scope.setLevel('warning')
+        scope.setTag('service', 'google_vision')
+        scope.setTag('operation', 'safe_search_detection')
+        scope.setExtra('http_status', response.status)
+        Sentry.captureMessage('[safesearch] Vision API returned non-OK status')
+      })
       return {
         flagged: false,
         categories: {},
@@ -79,6 +88,12 @@ export async function runSafeSearchHeuristic(imageBytes: Buffer): Promise<SafeSe
     }
   } catch (error) {
     console.error('[safesearch] Heuristic call failed', error)
+    Sentry.withScope((scope) => {
+      scope.setLevel('warning')
+      scope.setTag('service', 'google_vision')
+      scope.setTag('operation', 'safe_search_detection')
+      Sentry.captureException(error)
+    })
     return {
       flagged: false,
       categories: {},

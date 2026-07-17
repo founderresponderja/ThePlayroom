@@ -1,5 +1,6 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
+import * as Sentry from '@sentry/nextjs'
 import { db, users, eq } from '@playroom/db'
 
 const DEFAULT_ACCOUNT_TYPE = 'MALE_SINGLE' as const
@@ -181,6 +182,12 @@ export async function POST(req: Request) {
       'svix-signature': svix_signature,
     }) as ClerkWebhookEvent
   } catch (err) {
+    Sentry.withScope((scope) => {
+      scope.setLevel('warning')
+      scope.setTag('webhook.provider', 'clerk')
+      scope.setTag('webhook.stage', 'signature_verification')
+      Sentry.captureException(err)
+    })
     return new Response('Invalid signature', { status: 400 })
   }
 
@@ -203,6 +210,14 @@ export async function POST(req: Request) {
       type: evt.type,
       clerkUserId: evt.data?.id,
       error,
+    })
+    Sentry.withScope((scope) => {
+      scope.setLevel('error')
+      scope.setTag('webhook.provider', 'clerk')
+      scope.setTag('webhook.stage', 'user_sync')
+      scope.setTag('webhook.event_type', evt.type)
+      scope.setUser({ id: evt.data?.id })
+      Sentry.captureException(error)
     })
     return new Response('Failed to sync Clerk user', { status: 500 })
   }

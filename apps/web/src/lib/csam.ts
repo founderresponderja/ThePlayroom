@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/nextjs'
+
 export type ScanResult = {
   safe: boolean
   scanned: boolean // true only if a real scanner ran; false for placeholders or unavailable
@@ -68,6 +70,13 @@ export async function scanImageForCSAM(
   } catch (error) {
     // Fail safe: block on scanner errors, never allow.
     console.error('[CSAM] Scanner error, blocking upload:', error)
+    Sentry.withScope((scope) => {
+      scope.setLevel('warning')
+      scope.setTag('service', 'csam_scanner')
+      scope.setTag('operation', 'scan_image')
+      scope.setExtra('filename', filename)
+      Sentry.captureException(error)
+    })
     return {
       safe: false,
       scanned: false,

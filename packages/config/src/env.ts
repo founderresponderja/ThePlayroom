@@ -11,6 +11,7 @@ export const appEnvSchema = z.object({
   STRIPE_CONNECT_CLIENT_ID: z.string(),
   GOOGLE_MAPS_API_KEY: z.string(),
   GOOGLE_VISION_API_KEY: z.string().optional(),
+  SENTRY_DSN: z.string().url().optional(),
   OPENAI_API_KEY: z.string().optional(),
   EXPO_PUSH_KEY: z.string().optional(),
   MAKE_WEBHOOK_URL: z.string().url().optional(),
@@ -28,6 +29,7 @@ export function parseAppEnv(env: Record<string, string | undefined>) {
   return appEnvSchema.parse({
     ...env,
     GOOGLE_VISION_API_KEY: env.GOOGLE_VISION_API_KEY,
+    SENTRY_DSN: env.SENTRY_DSN,
     EXPO_PUSH_KEY: env.EXPO_PUSH_KEY,
     MAKE_WEBHOOK_URL: env.MAKE_WEBHOOK_URL,
     UPSTASH_REDIS_REST_URL: env.UPSTASH_REDIS_REST_URL,

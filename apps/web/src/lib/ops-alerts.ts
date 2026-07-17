@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/nextjs'
+
 /**
  * Ops Alerts: Send real-time alerts to operations team via Make.com webhook
  *
@@ -20,6 +22,20 @@ export type OpsAlertEvent = {
 }
 
 export async function sendOpsAlert(event: OpsAlertEvent): Promise<{ sent: boolean; error?: string }> {
+  if (event.severity === 'critical') {
+    Sentry.withScope((scope) => {
+      scope.setLevel('error')
+      scope.setTag('ops_alert.type', event.type)
+      scope.setTag('ops_alert.severity', event.severity)
+      scope.setContext('ops_alert', {
+        type: event.type,
+        severity: event.severity,
+        payload: event.payload,
+      })
+      Sentry.captureMessage(`[ops-alert] critical: ${event.type}`)
+    })
+  }
+
   const webhookUrl = process.env.MAKE_WEBHOOK_URL
 
   if (!webhookUrl) {
